@@ -1,4 +1,4 @@
-# Agent Shared Memory — Build Plan
+# Moneta — Build Plan
 
 Phased build plan for the system described in [SPEC.md](./SPEC.md).
 Each phase produces a usable increment. Phases are sequential — each
@@ -16,18 +16,18 @@ Estimated total: **~7 working days** for a single engineer.
 >
 > **Estimate:** 1 day
 >
-> **Done when:** `pnpm build` succeeds across all packages, migrations
+> **Done when:** `bun run typecheck` succeeds across all packages, migrations
 > apply cleanly to a Supabase instance, embedding generation returns
 > a vector from a test string.
 
 ### Project scaffolding
 
-- [ ] Create `memo/` monorepo root with `package.json` (pnpm
+- [ ] Create monorepo root with `package.json` (bun
       workspaces)
 - [ ] Create root `tsconfig.json` with shared compiler options
 - [ ] Create `packages/shared/`, `packages/mcp-server/`,
       `packages/cli/` with their `package.json` and `tsconfig.json`
-- [ ] Add shared dev dependencies: `typescript`, `vitest`, linting
+- [ ] Add shared dev dependencies: `typescript`, `bun test`, linting
 
 ### Database
 
@@ -76,7 +76,7 @@ Estimated total: **~7 working days** for a single engineer.
 
 - [ ] `server.ts` — MCP server scaffolding using `@modelcontextprotocol/sdk`
       with stdio transport
-- [ ] Read `MEMO_AGENT_ID` and `MEMO_PROJECT_ID` from config at
+- [ ] Read `MONETA_AGENT_ID` and `MONETA_PROJECT_ID` from config at
       startup, inject into all tool handlers
 - [ ] Agent identity decomposition: parse `alice/code-reviewer` into
       `{created_by, engineer, agent_type}` per SPEC section 4.1
@@ -157,8 +157,8 @@ Estimated total: **~7 working days** for a single engineer.
 >
 > **Estimate:** 1 day
 >
-> **Done when:** `memo search "question"`, `memo list`, `memo show`,
-> and `memo stats` all produce formatted output matching the mockups
+> **Done when:** `moneta search "question"`, `moneta list`, `moneta show`,
+> and `moneta stats` all produce formatted output matching the mockups
 > in SPEC section 7.2.
 
 ### CLI scaffolding
@@ -173,18 +173,18 @@ Estimated total: **~7 working days** for a single engineer.
 
 ### Commands
 
-- [ ] `memo search <question>` — semantic search with tabular output
+- [ ] `moneta search <question>` — semantic search with tabular output
   - [ ] Flags: `--limit`, `--threshold`, `--agent`, `--engineer`,
         `--repo`, `--tags`, `--archived`, `--json`
   - [ ] Output matches SPEC section 7.2 mockup
-- [ ] `memo list` — chronological list with filters
+- [ ] `moneta list` — chronological list with filters
   - [ ] Flags: `--recent`, `--agent`, `--engineer`, `--repo`,
         `--tags`, `--pinned`, `--archived`, `--stale`, `--json`
   - [ ] Footer shows total counts
-- [ ] `memo show <id>` — full detail view of a single memory
+- [ ] `moneta show <id>` — full detail view of a single memory
   - [ ] Accept full UUID or short prefix
   - [ ] Output matches SPEC section 7.2 mockup
-- [ ] `memo stats` — aggregate dashboard
+- [ ] `moneta stats` — aggregate dashboard
   - [ ] Total/active/archived/pinned counts
   - [ ] Breakdown by engineer, repo, top tags
   - [ ] Archival metrics (approaching stale, recently archived,
@@ -201,28 +201,28 @@ Estimated total: **~7 working days** for a single engineer.
 >
 > **Estimate:** 1 day
 >
-> **Done when:** All management commands work. `memo import` can
-> seed a fresh project from a JSONL file. `memo export` produces
+> **Done when:** All management commands work. `moneta import` can
+> seed a fresh project from a JSONL file. `moneta export` produces
 > a valid backup.
 
 ### Management commands
 
-- [ ] `memo pin <id>` — pin a memory, confirmation message
-- [ ] `memo unpin <id>` — unpin a memory, confirmation message
-- [ ] `memo archive <id>` — manually archive a memory
-- [ ] `memo restore <id>` — restore from archive, reset access clock
-- [ ] `memo forget <id>` — delete with `[y/N]` confirmation prompt
-- [ ] `memo correct <id> <new-content>` — update content, show
+- [ ] `moneta pin <id>` — pin a memory, confirmation message
+- [ ] `moneta unpin <id>` — unpin a memory, confirmation message
+- [ ] `moneta archive <id>` — manually archive a memory
+- [ ] `moneta restore <id>` — restore from archive, reset access clock
+- [ ] `moneta forget <id>` — delete with `[y/N]` confirmation prompt
+- [ ] `moneta correct <id> <new-content>` — update content, show
       old/new diff
 
 ### Bulk operations
 
-- [ ] `memo import <file>` — read JSONL, generate embeddings in
+- [ ] `moneta import <file>` — read JSONL, generate embeddings in
       batch, insert with dedup checks
   - [ ] `--agent` flag to set `created_by` for imported entries
   - [ ] Progress bar for large imports
   - [ ] Summary: imported count, skipped duplicates
-- [ ] `memo export` — dump memories as JSON to stdout
+- [ ] `moneta export` — dump memories as JSON to stdout
   - [ ] `--active` (default) or `--all` (include archived)
   - [ ] Include all fields except raw embedding vector
 
@@ -236,7 +236,7 @@ Estimated total: **~7 working days** for a single engineer.
 >
 > **Estimate:** 2 days
 >
-> **Done when:** `memo tui` launches an interactive interface with
+> **Done when:** `moneta tui` launches an interactive interface with
 > search mode, list mode, and stats mode. All keybindings from
 > SPEC section 7.3 work.
 
@@ -277,7 +277,7 @@ Estimated total: **~7 working days** for a single engineer.
 ### Stats mode
 
 - [ ] `Ctrl+S` switches to stats dashboard
-- [ ] Render same data as `memo stats` CLI command
+- [ ] Render same data as `moneta stats` CLI command
 - [ ] Auto-refresh on return from other modes
 
 ### Polish
@@ -371,7 +371,7 @@ built concurrently by different engineers after Phase 3 is done.
 |---|---|---|
 | **2** | 1 engineer, 1-2 agents | MCP client connected, manual testing, collecting feedback on recall quality and dedup behavior |
 | **3** | Full team, all agents | MCP server deployed for team. Agents configured with `remember`/`recall`. Observe memory growth and search patterns. |
-| **4** | Team leads / curious engineers | CLI for browsing what agents have learned. `memo stats` in standups to review agent knowledge. |
+| **4** | Team leads / curious engineers | CLI for browsing what agents have learned. `moneta stats` in standups to review agent knowledge. |
 | **6** | Anyone managing memory | TUI as the daily driver for memory hygiene. Pin important memories, clean up noise, review stale entries. |
 
 ---

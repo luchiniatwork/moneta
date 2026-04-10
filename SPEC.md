@@ -20,9 +20,10 @@ from the same project-scoped memory pool.
 - **Stale memories retire gracefully.** Memories that haven't been
   accessed recently are archived, not deleted. Archived memories can
   be searched explicitly and promoted back to active.
-- **Zero new infrastructure.** Everything runs on Supabase (Postgres +
-  pgvector). No separate vector database, no graph database, no
-  additional services beyond the MCP server itself.
+- **Zero new infrastructure.** Everything runs on PostgreSQL with
+  pgvector (hosted via Supabase or any PostgreSQL provider). No
+  separate vector database, no graph database, no additional services
+  beyond the MCP server itself.
 
 ### Non-Goals (for v1)
 
@@ -56,10 +57,10 @@ from the same project-scoped memory pool.
 │  │    forget             │                               │
 │  │    correct            │                               │
 │  └───────────┬───────────┘                               │
-│              │ Supabase client                           │
+│              │ PostgreSQL client                          │
 │              ▼                                           │
 │  ┌───────────────────────────────────────────┐           │
-│  │              Supabase                      │           │
+│  │         PostgreSQL + pgvector              │           │
 │  │  ┌──────────────────────────────────────┐ │           │
 │  │  │ project_memory table                 │ │           │
 │  │  │   + pgvector HNSW index              │ │           │
@@ -88,10 +89,10 @@ from the same project-scoped memory pool.
 
 | Component | Role | Talks To |
 |---|---|---|
-| **MCP Server** | Agent-facing API. Enforces conventions, generates embeddings, manages lifecycle. | Supabase, Embedding API |
-| **Supabase** | Persistence, vector search, archival. All data lives here. | — |
-| **CLI / TUI** | Human admin interface. Browse, search, manage, visualize. | Supabase directly |
-| **Archive Reaper** | pg_cron job. Archives stale unpinned memories daily. | Supabase (internal) |
+| **MCP Server** | Agent-facing API. Enforces conventions, generates embeddings, manages lifecycle. | PostgreSQL, Embedding API |
+| **PostgreSQL** | Persistence, vector search, archival. All data lives here. Supabase or any PostgreSQL host with pgvector. | — |
+| **CLI / TUI** | Human admin interface. Browse, search, manage, visualize. | PostgreSQL directly |
+| **Archive Reaper** | pg_cron job. Archives stale unpinned memories daily. | PostgreSQL (internal) |
 
 ---
 
@@ -497,7 +498,7 @@ fact is stale or wrong).
 - **Why:** Best cost/quality ratio for short factual text. Can be
   swapped for a local model (e.g., via Ollama) if latency or cost
   becomes a concern.
-- **Embedding is generated in the MCP server**, not in Supabase.
+- **Embedding is generated in the MCP server**, not in the database.
   This keeps the DB layer simple and the embedding provider swappable.
 
 ### 5.3 Deduplication Strategy
@@ -523,7 +524,7 @@ The MCP server should handle these gracefully:
 | Error | Behavior |
 |---|---|
 | Embedding API down | Return error to agent. Do not store without embedding. |
-| Supabase unreachable | Return error to agent. No silent failures. |
+| Database unreachable | Return error to agent. No silent failures. |
 | Memory not found (pin/forget/correct) | Return clear "not found" error. |
 | Content too long (> 2000 chars) | Reject with message. Memories are short facts, not documents. |
 | Empty content | Reject. |
@@ -598,37 +599,38 @@ relevant, searching for it brings it back.
 ## 7. CLI / TUI
 
 A command-line tool for humans to browse, search, and manage the
-memory store. Connects directly to Supabase (not through the MCP
+memory store. Connects directly to PostgreSQL (not through the MCP
 server). Shares the same embedding library as the MCP server.
 
 ### 7.1 Project Name and Invocation
 
-The CLI binary is `memo`. All commands operate on a configured
+The CLI binary is `moneta`. All commands operate on a configured
 project.
 
 ```
-memo [command] [options]
+moneta [command] [options]
 ```
 
-Configuration via environment variables or `~/.memo/config.json`:
+Configuration via environment variables or `~/.moneta/config.json`:
 
 ```json
 {
     "project_id": "acme-platform",
-    "supabase_url": "https://xxx.supabase.co",
-    "supabase_key": "service-role-key",
-    "openai_api_key": "sk-..."
+    "database_url": "postgresql://user:pass@host:5432/dbname",
+    "embedding_model": "text-embedding-3-small"
 }
 ```
 
+Note: `OPENAI_API_KEY` is read from the standard environment variable.
+
 ### 7.2 CLI Commands
 
-#### `memo search <question>`
+#### `moneta search <question>`
 
 Semantic search — the same operation agents use.
 
 ```
-$ memo search "How does authentication work?"
+$ moneta search "How does authentication work?"
 
   #  Score  Content                                          By                    Accessed
   1  0.87   Auth service uses JWT with RS256 signing,        alice/code-reviewer   2h ago
@@ -653,12 +655,12 @@ $ memo search "How does authentication work?"
 | `--archived` | Include archived memories |
 | `--json` | Output as JSON |
 
-#### `memo list`
+#### `moneta list`
 
 List memories with filters (non-semantic, chronological).
 
 ```
-$ memo list --recent 20
+$ moneta list --recent 20
 
   ID        Content                                     By                   Tags                 Pinned  Age
   a1b2c3    Auth service uses JWT with RS256 signing    alice/reviewer       [arch, security]     yes     2d
@@ -682,12 +684,12 @@ $ memo list --recent 20
 | `--stale` | Show memories approaching archival (accessed > 20d ago) |
 | `--json` | Output as JSON |
 
-#### `memo show <id>`
+#### `moneta show <id>`
 
 Display full detail of a single memory.
 
 ```
-$ memo show a1b2c3
+$ moneta show a1b2c3
 
   Memory a1b2c3d4-e5f6-...
   ─────────────────────────────────────────────
@@ -708,55 +710,55 @@ $ memo show a1b2c3
   Archived:     no
 ```
 
-#### `memo pin <id>` / `memo unpin <id>`
+#### `moneta pin <id>` / `moneta unpin <id>`
 
 ```
-$ memo pin a1b2c3
+$ moneta pin a1b2c3
 Pinned a1b2c3. This memory will not be archived.
 
-$ memo unpin a1b2c3
+$ moneta unpin a1b2c3
 Unpinned a1b2c3. This memory is now eligible for archival.
 ```
 
-#### `memo archive <id>` / `memo restore <id>`
+#### `moneta archive <id>` / `moneta restore <id>`
 
 Manual archive/restore (distinct from the automatic reaper).
 
 ```
-$ memo archive d4e5f6
+$ moneta archive d4e5f6
 Archived d4e5f6.
 
-$ memo restore d4e5f6
+$ moneta restore d4e5f6
 Restored d4e5f6 to active. Access clock reset.
 ```
 
-#### `memo forget <id>`
+#### `moneta forget <id>`
 
 Permanently delete a memory.
 
 ```
-$ memo forget d4e5f6
+$ moneta forget d4e5f6
 Are you sure you want to permanently delete this memory? [y/N] y
 Deleted d4e5f6.
 ```
 
-#### `memo correct <id> <new-content>`
+#### `moneta correct <id> <new-content>`
 
 Update a memory's content.
 
 ```
-$ memo correct a1b2c3 "Auth service uses JWT with RS256, tokens expire after 30min (changed from 15min)"
+$ moneta correct a1b2c3 "Auth service uses JWT with RS256, tokens expire after 30min (changed from 15min)"
 Corrected a1b2c3.
   Old: Auth service uses JWT with RS256 signing, tokens expire after 15min
   New: Auth service uses JWT with RS256, tokens expire after 30min (changed from 15min)
 ```
 
-#### `memo stats`
+#### `moneta stats`
 
 Overview dashboard.
 
 ```
-$ memo stats
+$ moneta stats
 
   Project: acme-platform
   ─────────────────────────────────────────
@@ -795,12 +797,12 @@ $ memo stats
     Most accessed:      a1b2c3  "Auth service uses JWT..." (47 hits)
 ```
 
-#### `memo import <file>`
+#### `moneta import <file>`
 
 Bulk import memories from a JSON or JSONL file.
 
 ```
-$ memo import seeds.jsonl --agent "admin/import"
+$ moneta import seeds.jsonl --agent "admin/import"
 Imported 45 memories. 3 near-duplicates skipped.
 ```
 
@@ -810,22 +812,22 @@ File format (JSONL):
 {"content": "CI runs on GitHub Actions with 10min timeout", "tags": ["ci", "infrastructure"]}
 ```
 
-#### `memo export`
+#### `moneta export`
 
 Export memories to JSON.
 
 ```
-$ memo export --active > backup.json
-$ memo export --all > full-backup.json
+$ moneta export --active > backup.json
+$ moneta export --all > full-backup.json
 ```
 
 ### 7.3 TUI Mode
 
 An interactive terminal interface for browsing and managing memories.
-Launched via `memo tui` or simply `memo` with no arguments.
+Launched via `moneta tui` or simply `moneta` with no arguments.
 
 ```
-$ memo tui
+$ moneta tui
 ```
 
 #### Layout
@@ -889,7 +891,7 @@ $ memo tui
    management.
 
 3. **Stats mode** (`Ctrl+S`): Dashboard view showing the same
-   information as `memo stats`.
+   information as `moneta stats`.
 
 ---
 
@@ -899,31 +901,28 @@ $ memo tui
 
 | Variable | Required | Description |
 |---|---|---|
-| `MEMO_PROJECT_ID` | yes | Project identifier (e.g., `"acme-platform"`) |
-| `MEMO_SUPABASE_URL` | yes | Supabase project URL |
-| `MEMO_SUPABASE_KEY` | yes | Supabase service role key (for MCP server and CLI) |
-| `MEMO_OPENAI_API_KEY` | yes | OpenAI API key for embeddings |
-| `MEMO_EMBEDDING_MODEL` | no | Embedding model name (default: `text-embedding-3-small`) |
-| `MEMO_AGENT_ID` | yes* | Agent identity for MCP server (e.g., `"alice/code-reviewer"`) |
-| `MEMO_ARCHIVE_AFTER_DAYS` | no | Days before archival (default: 30) |
-| `MEMO_DEDUP_THRESHOLD` | no | Similarity threshold for dedup (default: 0.95) |
-| `MEMO_SEARCH_THRESHOLD` | no | Min similarity for search results (default: 0.30) |
-| `MEMO_SEARCH_LIMIT` | no | Default search result limit (default: 10) |
-| `MEMO_MAX_CONTENT_LENGTH` | no | Max characters per memory (default: 2000) |
+| `MONETA_PROJECT_ID` | yes | Project identifier (e.g., `"acme-platform"`) |
+| `MONETA_DATABASE_URL` | yes | PostgreSQL connection string (e.g., `"postgresql://user:pass@host:5432/dbname"`) |
+| `OPENAI_API_KEY` | yes | OpenAI API key for embeddings |
+| `MONETA_EMBEDDING_MODEL` | no | Embedding model name (default: `text-embedding-3-small`) |
+| `MONETA_AGENT_ID` | yes* | Agent identity for MCP server (e.g., `"alice/code-reviewer"`) |
+| `MONETA_ARCHIVE_AFTER_DAYS` | no | Days before archival (default: 30) |
+| `MONETA_DEDUP_THRESHOLD` | no | Similarity threshold for dedup (default: 0.95) |
+| `MONETA_SEARCH_THRESHOLD` | no | Min similarity for search results (default: 0.30) |
+| `MONETA_SEARCH_LIMIT` | no | Default search result limit (default: 10) |
+| `MONETA_MAX_CONTENT_LENGTH` | no | Max characters per memory (default: 2000) |
 
-*`MEMO_AGENT_ID` is required for the MCP server, not for the CLI.
+*`MONETA_AGENT_ID` is required for the MCP server, not for the CLI.
 
 ### 8.2 Config File
 
-Both the MCP server and CLI read `~/.memo/config.json` as a
+Both the MCP server and CLI read `~/.moneta/config.json` as a
 fallback. Environment variables take precedence.
 
 ```json
 {
     "project_id": "acme-platform",
-    "supabase_url": "https://xxx.supabase.co",
-    "supabase_key": "...",
-    "openai_api_key": "...",
+    "database_url": "postgresql://user:pass@host:5432/dbname",
     "embedding_model": "text-embedding-3-small",
     "archive_after_days": 30,
     "dedup_threshold": 0.95,
@@ -938,12 +937,12 @@ fallback. Environment variables take precedence.
 ## 9. Project Structure
 
 ```
-memo/
+moneta/
 ├── packages/
 │   ├── shared/                  # Shared code between MCP server and CLI
 │   │   ├── src/
 │   │   │   ├── config.ts        # Config loading (env + file)
-│   │   │   ├── db.ts            # Supabase client + queries
+│   │   │   ├── db.ts            # PostgreSQL client + queries
 │   │   │   ├── embeddings.ts    # Embedding generation
 │   │   │   ├── types.ts         # Shared types
 │   │   │   └── index.ts
@@ -1007,7 +1006,7 @@ memo/
 
 ### Monitoring
 
-Track these metrics (via Supabase dashboard or custom queries):
+Track these metrics (via database dashboard or custom queries):
 
 1. **Memory growth rate:** `SELECT COUNT(*), date_trunc('day',
    created_at) FROM project_memory GROUP BY 2`

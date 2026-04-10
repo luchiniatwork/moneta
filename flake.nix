@@ -13,6 +13,8 @@
         default = pkgs.mkShell {
           packages = [
             pkgs.bun
+            pkgs.supabase-cli
+            pkgs.postgresql
           ];
 
           shellHook = ''

@@ -1,0 +1,12 @@
+{
+  "name": "@moneta/mcp-server",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.11.0",
+    "@moneta/shared": "workspace:*"
+  }
+}

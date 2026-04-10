@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@moneta/shared": ["./src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts"]
+}
