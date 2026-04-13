@@ -1,9 +1,17 @@
 #!/usr/bin/env bun
 import { Command } from "commander"
+import { handleArchive } from "./commands/archive.ts"
+import { handleCorrect } from "./commands/correct.ts"
+import { handleExport } from "./commands/export.ts"
+import { handleForget } from "./commands/forget.ts"
+import { handleImport } from "./commands/import.ts"
 import { handleList } from "./commands/list.ts"
+import { handlePin } from "./commands/pin.ts"
+import { handleRestore } from "./commands/restore.ts"
 import { handleSearch } from "./commands/search.ts"
 import { handleShow } from "./commands/show.ts"
 import { handleStats } from "./commands/stats.ts"
+import { handleUnpin } from "./commands/unpin.ts"
 import { createContext, destroyContext } from "./context.ts"
 
 // ---------------------------------------------------------------------------
@@ -97,6 +105,145 @@ program
     const ctx = await createContext()
     try {
       await handleStats(options, ctx)
+    } finally {
+      await destroyContext(ctx)
+    }
+  })
+
+// ---------------------------------------------------------------------------
+// moneta pin <id>
+// ---------------------------------------------------------------------------
+
+program
+  .command("pin")
+  .description("Pin a memory so it will never be archived")
+  .argument("<id>", "Full UUID or short prefix (6+ chars)")
+  .action(async (id: string) => {
+    const ctx = await createContext()
+    try {
+      await handlePin(id, ctx)
+    } finally {
+      await destroyContext(ctx)
+    }
+  })
+
+// ---------------------------------------------------------------------------
+// moneta unpin <id>
+// ---------------------------------------------------------------------------
+
+program
+  .command("unpin")
+  .description("Unpin a memory, making it eligible for archival")
+  .argument("<id>", "Full UUID or short prefix (6+ chars)")
+  .action(async (id: string) => {
+    const ctx = await createContext()
+    try {
+      await handleUnpin(id, ctx)
+    } finally {
+      await destroyContext(ctx)
+    }
+  })
+
+// ---------------------------------------------------------------------------
+// moneta archive <id>
+// ---------------------------------------------------------------------------
+
+program
+  .command("archive")
+  .description("Manually archive a memory")
+  .argument("<id>", "Full UUID or short prefix (6+ chars)")
+  .action(async (id: string) => {
+    const ctx = await createContext()
+    try {
+      await handleArchive(id, ctx)
+    } finally {
+      await destroyContext(ctx)
+    }
+  })
+
+// ---------------------------------------------------------------------------
+// moneta restore <id>
+// ---------------------------------------------------------------------------
+
+program
+  .command("restore")
+  .description("Restore an archived memory to active")
+  .argument("<id>", "Full UUID or short prefix (6+ chars)")
+  .action(async (id: string) => {
+    const ctx = await createContext()
+    try {
+      await handleRestore(id, ctx)
+    } finally {
+      await destroyContext(ctx)
+    }
+  })
+
+// ---------------------------------------------------------------------------
+// moneta forget <id>
+// ---------------------------------------------------------------------------
+
+program
+  .command("forget")
+  .description("Permanently delete a memory")
+  .argument("<id>", "Full UUID or short prefix (6+ chars)")
+  .option("-y, --yes", "Skip confirmation prompt")
+  .action(async (id: string, options: Record<string, unknown>) => {
+    const ctx = await createContext()
+    try {
+      await handleForget(id, options, ctx)
+    } finally {
+      await destroyContext(ctx)
+    }
+  })
+
+// ---------------------------------------------------------------------------
+// moneta correct <id> <new-content>
+// ---------------------------------------------------------------------------
+
+program
+  .command("correct")
+  .description("Update a memory's content")
+  .argument("<id>", "Full UUID or short prefix (6+ chars)")
+  .argument("<new-content>", "The corrected fact")
+  .action(async (id: string, newContent: string) => {
+    const ctx = await createContext()
+    try {
+      await handleCorrect(id, newContent, ctx)
+    } finally {
+      await destroyContext(ctx)
+    }
+  })
+
+// ---------------------------------------------------------------------------
+// moneta export
+// ---------------------------------------------------------------------------
+
+program
+  .command("export")
+  .description("Export memories as JSON to stdout")
+  .option("--all", "Include archived memories (default: active only)")
+  .action(async (options: Record<string, unknown>) => {
+    const ctx = await createContext()
+    try {
+      await handleExport(options, ctx)
+    } finally {
+      await destroyContext(ctx)
+    }
+  })
+
+// ---------------------------------------------------------------------------
+// moneta import <file>
+// ---------------------------------------------------------------------------
+
+program
+  .command("import")
+  .description("Import memories from a JSONL file")
+  .argument("<file>", "Path to JSONL file")
+  .option("--agent <identity>", 'Agent identity for imported entries (default: "cli/import")')
+  .action(async (file: string, options: Record<string, unknown>) => {
+    const ctx = await createContext()
+    try {
+      await handleImport(file, options, ctx)
     } finally {
       await destroyContext(ctx)
     }

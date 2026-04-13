@@ -17,7 +17,7 @@ export {
   updateMemory,
 } from "./db.ts"
 // Embeddings
-export { embed, resetClient } from "./embeddings.ts"
+export { embed, embedBatch, resetClient } from "./embeddings.ts"
 // Identity
 export { parseAgentId } from "./identity.ts"
 export type {

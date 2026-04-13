@@ -213,24 +213,24 @@ Estimated total: **~7 working days** for a single engineer.
 
 ### Management commands
 
-- [ ] `moneta pin <id>` — pin a memory, confirmation message
-- [ ] `moneta unpin <id>` — unpin a memory, confirmation message
-- [ ] `moneta archive <id>` — manually archive a memory
-- [ ] `moneta restore <id>` — restore from archive, reset access clock
-- [ ] `moneta forget <id>` — delete with `[y/N]` confirmation prompt
-- [ ] `moneta correct <id> <new-content>` — update content, show
+- [x] `moneta pin <id>` — pin a memory, confirmation message
+- [x] `moneta unpin <id>` — unpin a memory, confirmation message
+- [x] `moneta archive <id>` — manually archive a memory
+- [x] `moneta restore <id>` — restore from archive, reset access clock
+- [x] `moneta forget <id>` — delete with `[y/N]` confirmation prompt
+- [x] `moneta correct <id> <new-content>` — update content, show
       old/new diff
 
 ### Bulk operations
 
-- [ ] `moneta import <file>` — read JSONL, generate embeddings in
+- [x] `moneta import <file>` — read JSONL, generate embeddings in
       batch, insert with dedup checks
-  - [ ] `--agent` flag to set `created_by` for imported entries
-  - [ ] Progress bar for large imports
-  - [ ] Summary: imported count, skipped duplicates
-- [ ] `moneta export` — dump memories as JSON to stdout
-  - [ ] `--active` (default) or `--all` (include archived)
-  - [ ] Include all fields except raw embedding vector
+  - [x] `--agent` flag to set `created_by` for imported entries
+  - [x] Progress bar for large imports
+  - [x] Summary: imported count, skipped duplicates
+- [x] `moneta export` — dump memories as JSON to stdout
+  - [x] `--active` (default) or `--all` (include archived)
+  - [x] Include all fields except raw embedding vector
 
 ---
 
