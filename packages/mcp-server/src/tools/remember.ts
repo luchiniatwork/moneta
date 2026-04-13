@@ -44,7 +44,15 @@ export async function handleRemember(
   const { content, tags, repo, importance } = params
 
   // Generate embedding for the content
-  const embedding = await embed(content, config.openaiApiKey, config.embeddingModel)
+  let embedding: number[]
+  try {
+    embedding = await embed(content, config.openaiApiKey, config.embeddingModel)
+  } catch (error) {
+    throw new Error(
+      `Failed to generate embedding: ${error instanceof Error ? error.message : String(error)}. ` +
+        "Check that OPENAI_API_KEY is valid and the embedding service is reachable.",
+    )
+  }
 
   // Check for near-duplicates
   const duplicates = await callDedupCheck(db, {

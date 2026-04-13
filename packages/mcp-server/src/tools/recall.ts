@@ -44,7 +44,15 @@ export async function handleRecall(
   const limit = params.limit ?? config.searchLimit
 
   // Generate embedding for the question
-  const embedding = await embed(question, config.openaiApiKey, config.embeddingModel)
+  let embedding: number[]
+  try {
+    embedding = await embed(question, config.openaiApiKey, config.embeddingModel)
+  } catch (error) {
+    throw new Error(
+      `Failed to generate embedding: ${error instanceof Error ? error.message : String(error)}. ` +
+        "Check that OPENAI_API_KEY is valid and the embedding service is reachable.",
+    )
+  }
 
   // Semantic search via the recall() SQL function
   const results = await callRecall(db, {

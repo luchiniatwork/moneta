@@ -128,29 +128,29 @@ Estimated total: **~7 working days** for a single engineer.
 
 ### Remaining tools
 
-- [ ] `tools/pin.ts` — set `pinned = true`, validate memory exists
-- [ ] `tools/unpin.ts` — set `pinned = false`, validate memory exists
+- [x] `tools/pin.ts` — set `pinned = true`, validate memory exists
+- [x] `tools/unpin.ts` — set `pinned = false`, validate memory exists
       (separate from pin for MCP tool clarity)
-- [ ] `tools/forget.ts` — hard delete, validate memory exists
-- [ ] `tools/correct.ts` — update content + re-embed, validate
+- [x] `tools/forget.ts` — hard delete, validate memory exists
+- [x] `tools/correct.ts` — update content + re-embed, validate
       memory exists, return old/new content
 
 ### Error handling
 
-- [ ] Memory-not-found errors return clear message with the ID
+- [x] Memory-not-found errors return clear message with the ID
       that was requested
-- [ ] Embedding API failures return actionable error (not a stack
+- [x] Embedding API failures return actionable error (not a stack
       trace)
-- [ ] Supabase connection failures return actionable error
-- [ ] Content validation: empty string, over max length, non-string
-- [ ] Log all tool invocations with agent_id + timestamp for
-      observability (stdout, structured JSON)
+- [x] Supabase connection failures return actionable error
+- [x] Content validation: empty string, over max length, non-string
+- [x] Log all tool invocations with agent_id + timestamp for
+      observability (stderr, structured JSON)
 
 ### Integration test
 
-- [ ] Automated test script: create → search → pin → correct →
+- [x] Automated test script: create → search → pin → correct →
       unpin → forget lifecycle
-- [ ] Cross-agent test: Agent A remembers, Agent B recalls,
+- [x] Cross-agent test: Agent A remembers, Agent B recalls,
       Agent B corrects — verify attribution is preserved
 
 ---
