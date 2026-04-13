@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs"
-import { join } from "node:path"
 import { homedir } from "node:os"
+import { join } from "node:path"
 import type { Config } from "./types.ts"
 
 /** Shape of ~/.moneta/config.json on disk. */
@@ -55,54 +55,38 @@ export function loadConfig(overrides?: Partial<Config>): Config {
   const env = process.env
 
   const config: Config = {
-    projectId:
-      overrides?.projectId ??
-      env["MONETA_PROJECT_ID"] ??
-      file.project_id ??
-      "",
-    databaseUrl:
-      overrides?.databaseUrl ??
-      env["MONETA_DATABASE_URL"] ??
-      file.database_url ??
-      "",
-    openaiApiKey:
-      overrides?.openaiApiKey ??
-      env["OPENAI_API_KEY"] ??
-      file.openai_api_key ??
-      "",
-    agentId:
-      overrides?.agentId ??
-      env["MONETA_AGENT_ID"] ??
-      file.agent_id ??
-      undefined,
+    projectId: overrides?.projectId ?? env.MONETA_PROJECT_ID ?? file.project_id ?? "",
+    databaseUrl: overrides?.databaseUrl ?? env.MONETA_DATABASE_URL ?? file.database_url ?? "",
+    openaiApiKey: overrides?.openaiApiKey ?? env.OPENAI_API_KEY ?? file.openai_api_key ?? "",
+    agentId: overrides?.agentId ?? env.MONETA_AGENT_ID ?? file.agent_id ?? undefined,
     embeddingModel:
       overrides?.embeddingModel ??
-      env["MONETA_EMBEDDING_MODEL"] ??
+      env.MONETA_EMBEDDING_MODEL ??
       file.embedding_model ??
       DEFAULTS.embeddingModel,
     archiveAfterDays:
       overrides?.archiveAfterDays ??
-      toInt(env["MONETA_ARCHIVE_AFTER_DAYS"]) ??
+      toInt(env.MONETA_ARCHIVE_AFTER_DAYS) ??
       file.archive_after_days ??
       DEFAULTS.archiveAfterDays,
     dedupThreshold:
       overrides?.dedupThreshold ??
-      toFloat(env["MONETA_DEDUP_THRESHOLD"]) ??
+      toFloat(env.MONETA_DEDUP_THRESHOLD) ??
       file.dedup_threshold ??
       DEFAULTS.dedupThreshold,
     searchThreshold:
       overrides?.searchThreshold ??
-      toFloat(env["MONETA_SEARCH_THRESHOLD"]) ??
+      toFloat(env.MONETA_SEARCH_THRESHOLD) ??
       file.search_threshold ??
       DEFAULTS.searchThreshold,
     searchLimit:
       overrides?.searchLimit ??
-      toInt(env["MONETA_SEARCH_LIMIT"]) ??
+      toInt(env.MONETA_SEARCH_LIMIT) ??
       file.search_limit ??
       DEFAULTS.searchLimit,
     maxContentLength:
       overrides?.maxContentLength ??
-      toInt(env["MONETA_MAX_CONTENT_LENGTH"]) ??
+      toInt(env.MONETA_MAX_CONTENT_LENGTH) ??
       file.max_content_length ??
       DEFAULTS.maxContentLength,
   }
@@ -114,31 +98,26 @@ export function loadConfig(overrides?: Partial<Config>): Config {
  * Validate that all required config fields are present.
  * Returns an array of error messages (empty = valid).
  */
-export function validateConfig(
-  config: Config,
-  opts: { requireAgentId?: boolean } = {}
-): string[] {
+export function validateConfig(config: Config, opts: { requireAgentId?: boolean } = {}): string[] {
   const errors: string[] = []
 
   if (!config.projectId) {
     errors.push(
-      "Missing required config: projectId (set MONETA_PROJECT_ID or project_id in config file)"
+      "Missing required config: projectId (set MONETA_PROJECT_ID or project_id in config file)",
     )
   }
   if (!config.databaseUrl) {
     errors.push(
-      "Missing required config: databaseUrl (set MONETA_DATABASE_URL or database_url in config file)"
+      "Missing required config: databaseUrl (set MONETA_DATABASE_URL or database_url in config file)",
     )
   }
   if (!config.openaiApiKey) {
     errors.push(
-      "Missing required config: openaiApiKey (set OPENAI_API_KEY or openai_api_key in config file)"
+      "Missing required config: openaiApiKey (set OPENAI_API_KEY or openai_api_key in config file)",
     )
   }
   if (opts.requireAgentId && !config.agentId) {
-    errors.push(
-      "Missing required config: agentId (set MONETA_AGENT_ID or agent_id in config file)"
-    )
+    errors.push("Missing required config: agentId (set MONETA_AGENT_ID or agent_id in config file)")
   }
 
   return errors

@@ -22,41 +22,46 @@ Estimated total: **~7 working days** for a single engineer.
 
 ### Project scaffolding
 
-- [ ] Create monorepo root with `package.json` (bun
+- [x] Create monorepo root with `package.json` (bun
       workspaces)
-- [ ] Create root `tsconfig.json` with shared compiler options
-- [ ] Create `packages/shared/`, `packages/mcp-server/`,
+- [x] Create root `tsconfig.json` with shared compiler options
+- [x] Create `packages/shared/`, `packages/mcp-server/`,
       `packages/cli/` with their `package.json` and `tsconfig.json`
-- [ ] Add shared dev dependencies: `typescript`, `bun test`, linting
+- [x] Add shared dev dependencies: `typescript`, `bun test`, linting
+      (Biome for linting + formatting)
 
 ### Database
 
-- [ ] Create `supabase/migrations/001_create_project_memory.sql` —
+- [x] Create `supabase/migrations/001_create_project_memory.sql` —
       table DDL from SPEC section 3.1
-- [ ] Create `supabase/migrations/002_create_indexes.sql` — all 6
+- [x] Create `supabase/migrations/002_create_indexes.sql` — all 6
       indexes from SPEC section 3.2
-- [ ] Create `supabase/migrations/003_create_functions.sql` —
+- [x] Create `supabase/migrations/003_create_functions.sql` —
       `recall()`, `touch_memories()`, `dedup_check()`,
       `archive_stale()` from SPEC section 3.3
-- [ ] Create `supabase/migrations/004_create_cron_jobs.sql` —
+- [x] Create `supabase/migrations/004_create_cron_jobs.sql` —
       pg_cron schedule from SPEC section 3.4
 - [ ] Apply migrations to a dev Supabase instance and verify
       with a manual `INSERT` + `SELECT` round-trip
 
 ### Shared library (`packages/shared`)
 
-- [ ] `types.ts` — `Memory`, `RecallResult`, `RememberResult`,
+- [x] `types.ts` — `Memory`, `RecallResult`, `RememberResult`,
       `SearchScope`, `Config` types from SPEC sections 3–5
-- [ ] `config.ts` — Load config from env vars → config file →
+      (uses Kysely-style `MemoryRow`/`NewMemory`/`MemoryUpdate`
+      instead of a single `Memory` type)
+- [x] `config.ts` — Load config from env vars → config file →
       defaults (precedence chain from SPEC section 8)
-- [ ] `db.ts` — Supabase client init, typed wrappers for calling
+- [x] `db.ts` — Kysely + postgres.js client, typed wrappers for
       the 4 SQL functions (recall, touch, dedup_check, archive_stale),
       and basic CRUD (insert, update, delete, get-by-id)
-- [ ] `embeddings.ts` — `embed(text: string): Promise<number[]>`
+- [x] `embeddings.ts` — `embed(text, apiKey, model?): Promise<number[]>`
       wrapping the OpenAI embeddings API
-- [ ] `index.ts` — barrel export
-- [ ] Unit tests for config loading (env override, file fallback,
-      defaults)
+- [x] `identity.ts` — `parseAgentId()` decomposition
+      (SPEC section 4.1, used by both MCP server and CLI)
+- [x] `index.ts` — barrel export
+- [x] Unit tests for config loading (env override, file fallback,
+      defaults), identity parsing, and embedding generation
 
 ---
 

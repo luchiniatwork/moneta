@@ -23,7 +23,7 @@ export function parseAgentId(agentId: string): AgentIdentity {
 
   if (slashIndex === -1) {
     throw new Error(
-      `Invalid agent ID "${trimmed}": must contain a "/" separator (e.g. "alice/code-reviewer" or "auto/ci-fixer")`
+      `Invalid agent ID "${trimmed}": must contain a "/" separator (e.g. "alice/code-reviewer" or "auto/ci-fixer")`,
     )
   }
 
@@ -31,21 +31,15 @@ export function parseAgentId(agentId: string): AgentIdentity {
   const suffix = trimmed.slice(slashIndex + 1)
 
   if (prefix.length === 0) {
-    throw new Error(
-      `Invalid agent ID "${trimmed}": engineer/prefix before "/" must not be empty`
-    )
+    throw new Error(`Invalid agent ID "${trimmed}": engineer/prefix before "/" must not be empty`)
   }
 
   if (suffix.length === 0) {
-    throw new Error(
-      `Invalid agent ID "${trimmed}": agent-type after "/" must not be empty`
-    )
+    throw new Error(`Invalid agent ID "${trimmed}": agent-type after "/" must not be empty`)
   }
 
   if (suffix.includes("/")) {
-    throw new Error(
-      `Invalid agent ID "${trimmed}": must contain exactly one "/" separator`
-    )
+    throw new Error(`Invalid agent ID "${trimmed}": must contain exactly one "/" separator`)
   }
 
   return {

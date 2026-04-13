@@ -2,15 +2,21 @@
   "name": "moneta",
   "private": true,
   "type": "module",
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "typecheck": "tsc --noEmit -p packages/shared/tsconfig.json && tsc --noEmit -p packages/mcp-server/tsconfig.json && tsc --noEmit -p packages/cli/tsconfig.json",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
     "test": "bun test",
     "db:start": "bunx supabase start",
     "db:stop": "bunx supabase stop",
     "db:reset": "bunx supabase db reset"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.11",
     "@types/bun": "latest",
     "supabase": "^2",
     "typescript": "^5"

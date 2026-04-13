@@ -67,9 +67,7 @@ describe("parseAgentId", () => {
     })
 
     it("throws on empty prefix", () => {
-      expect(() => parseAgentId("/reviewer")).toThrow(
-        "engineer/prefix before"
-      )
+      expect(() => parseAgentId("/reviewer")).toThrow("engineer/prefix before")
     })
 
     it("throws on empty suffix", () => {
@@ -77,9 +75,7 @@ describe("parseAgentId", () => {
     })
 
     it("throws on multiple slashes", () => {
-      expect(() => parseAgentId("alice/team/reviewer")).toThrow(
-        'exactly one "/"'
-      )
+      expect(() => parseAgentId("alice/team/reviewer")).toThrow('exactly one "/"')
     })
   })
 })

@@ -45,7 +45,7 @@ function toVectorLiteral(embedding: number[]): string {
 /** Insert a new memory row. Returns the inserted row. */
 export async function insertMemory(
   db: Kysely<Database>,
-  memory: Omit<NewMemory, "embedding"> & { embedding?: number[] }
+  memory: Omit<NewMemory, "embedding"> & { embedding?: number[] },
 ): Promise<MemoryRow> {
   const { embedding, ...rest } = memory
 
@@ -71,10 +71,7 @@ export async function insertMemory(
 }
 
 /** Get a memory by ID. Returns null if not found. */
-export async function getMemoryById(
-  db: Kysely<Database>,
-  id: string
-): Promise<MemoryRow | null> {
+export async function getMemoryById(db: Kysely<Database>, id: string): Promise<MemoryRow | null> {
   const row = await db
     .selectFrom("project_memory")
     .selectAll()
@@ -87,7 +84,7 @@ export async function getMemoryById(
 export async function updateMemory(
   db: Kysely<Database>,
   id: string,
-  updates: MemoryUpdate & { newEmbedding?: number[] }
+  updates: MemoryUpdate & { newEmbedding?: number[] },
 ): Promise<MemoryRow> {
   const { newEmbedding, ...rest } = updates
 
@@ -108,14 +105,8 @@ export async function updateMemory(
 }
 
 /** Hard-delete a memory by ID. Returns true if a row was deleted. */
-export async function deleteMemory(
-  db: Kysely<Database>,
-  id: string
-): Promise<boolean> {
-  const result = await db
-    .deleteFrom("project_memory")
-    .where("id", "=", id)
-    .executeTakeFirst()
+export async function deleteMemory(db: Kysely<Database>, id: string): Promise<boolean> {
+  const result = await db.deleteFrom("project_memory").where("id", "=", id).executeTakeFirst()
   return (result.numDeletedRows ?? 0n) > 0n
 }
 
@@ -136,7 +127,7 @@ export async function callRecall(
     engineer?: string
     repo?: string
     tags?: string[]
-  }
+  },
 ): Promise<RecallResult[]> {
   const vec = toVectorLiteral(params.embedding)
   const limit = params.limit ?? 10
@@ -148,7 +139,7 @@ export async function callRecall(
   const tags = params.tags ?? null
 
   const tagsLiteral = tags
-    ? sql`${sql.raw(`ARRAY[${tags.map((t) => `'${t.replace(/'/g, "''")}'`).join(",")}]::text[]`)}` 
+    ? sql`${sql.raw(`ARRAY[${tags.map((t) => `'${t.replace(/'/g, "''")}'`).join(",")}]::text[]`)}`
     : sql`NULL::text[]`
 
   const rows = await sql<RecallResult>`
@@ -169,12 +160,11 @@ export async function callRecall(
 }
 
 /** Bump access timestamps for recalled memories. */
-export async function callTouchMemories(
-  db: Kysely<Database>,
-  ids: string[]
-): Promise<void> {
+export async function callTouchMemories(db: Kysely<Database>, ids: string[]): Promise<void> {
   if (ids.length === 0) return
-  await sql`SELECT touch_memories(${sql.raw(`ARRAY[${ids.map((id) => `'${id}'::uuid`).join(",")}]`)})`.execute(db)
+  await sql`SELECT touch_memories(${sql.raw(`ARRAY[${ids.map((id) => `'${id}'::uuid`).join(",")}]`)})`.execute(
+    db,
+  )
 }
 
 /** Check for near-duplicate memories before insert. */
@@ -184,7 +174,7 @@ export async function callDedupCheck(
     projectId: string
     embedding: number[]
     threshold?: number
-  }
+  },
 ): Promise<DedupMatch[]> {
   const vec = toVectorLiteral(params.embedding)
   const threshold = params.threshold ?? 0.95
@@ -208,7 +198,7 @@ export async function callDedupCheck(
 /** Archive stale memories. Returns count of archived rows. */
 export async function callArchiveStale(
   db: Kysely<Database>,
-  staleIntervalDays: number = 30
+  staleIntervalDays: number = 30,
 ): Promise<number> {
   const result = await sql<{ archive_stale: number }>`
     SELECT archive_stale(${sql.raw(`INTERVAL '${staleIntervalDays} days'`)})

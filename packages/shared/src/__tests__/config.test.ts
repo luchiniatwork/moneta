@@ -48,35 +48,35 @@ describe("loadConfig", () => {
 
   describe("env var loading", () => {
     it("reads MONETA_PROJECT_ID from env", () => {
-      process.env["MONETA_PROJECT_ID"] = "test-project"
+      process.env.MONETA_PROJECT_ID = "test-project"
       const config = loadConfig()
       expect(config.projectId).toBe("test-project")
     })
 
     it("reads MONETA_DATABASE_URL from env", () => {
-      process.env["MONETA_DATABASE_URL"] = "postgresql://localhost:5432/test"
+      process.env.MONETA_DATABASE_URL = "postgresql://localhost:5432/test"
       const config = loadConfig()
       expect(config.databaseUrl).toBe("postgresql://localhost:5432/test")
     })
 
     it("reads OPENAI_API_KEY from env", () => {
-      process.env["OPENAI_API_KEY"] = "sk-test-key"
+      process.env.OPENAI_API_KEY = "sk-test-key"
       const config = loadConfig()
       expect(config.openaiApiKey).toBe("sk-test-key")
     })
 
     it("reads MONETA_AGENT_ID from env", () => {
-      process.env["MONETA_AGENT_ID"] = "alice/reviewer"
+      process.env.MONETA_AGENT_ID = "alice/reviewer"
       const config = loadConfig()
       expect(config.agentId).toBe("alice/reviewer")
     })
 
     it("reads numeric env vars", () => {
-      process.env["MONETA_ARCHIVE_AFTER_DAYS"] = "60"
-      process.env["MONETA_DEDUP_THRESHOLD"] = "0.97"
-      process.env["MONETA_SEARCH_THRESHOLD"] = "0.5"
-      process.env["MONETA_SEARCH_LIMIT"] = "20"
-      process.env["MONETA_MAX_CONTENT_LENGTH"] = "5000"
+      process.env.MONETA_ARCHIVE_AFTER_DAYS = "60"
+      process.env.MONETA_DEDUP_THRESHOLD = "0.97"
+      process.env.MONETA_SEARCH_THRESHOLD = "0.5"
+      process.env.MONETA_SEARCH_LIMIT = "20"
+      process.env.MONETA_MAX_CONTENT_LENGTH = "5000"
 
       const config = loadConfig()
       expect(config.archiveAfterDays).toBe(60)
@@ -87,7 +87,7 @@ describe("loadConfig", () => {
     })
 
     it("ignores invalid numeric env vars and falls through to defaults", () => {
-      process.env["MONETA_ARCHIVE_AFTER_DAYS"] = "not-a-number"
+      process.env.MONETA_ARCHIVE_AFTER_DAYS = "not-a-number"
       const config = loadConfig()
       expect(config.archiveAfterDays).toBe(30) // default
     })
@@ -95,7 +95,7 @@ describe("loadConfig", () => {
 
   describe("overrides", () => {
     it("overrides take precedence over env vars", () => {
-      process.env["MONETA_PROJECT_ID"] = "from-env"
+      process.env.MONETA_PROJECT_ID = "from-env"
       const config = loadConfig({ projectId: "from-override" })
       expect(config.projectId).toBe("from-override")
     })

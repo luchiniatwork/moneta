@@ -1,4 +1,23 @@
 // Types
+
+// Config
+export { loadConfig, validateConfig } from "./config.ts"
+// Database
+export {
+  callArchiveStale,
+  callDedupCheck,
+  callRecall,
+  callTouchMemories,
+  createDb,
+  deleteMemory,
+  getMemoryById,
+  insertMemory,
+  updateMemory,
+} from "./db.ts"
+// Embeddings
+export { embed, resetClient } from "./embeddings.ts"
+// Identity
+export { parseAgentId } from "./identity.ts"
 export type {
   AgentIdentity,
   Config,
@@ -14,25 +33,3 @@ export type {
   RememberResult,
   SearchScope,
 } from "./types.ts"
-
-// Config
-export { loadConfig, validateConfig } from "./config.ts"
-
-// Identity
-export { parseAgentId } from "./identity.ts"
-
-// Embeddings
-export { embed, resetClient } from "./embeddings.ts"
-
-// Database
-export {
-  createDb,
-  insertMemory,
-  getMemoryById,
-  updateMemory,
-  deleteMemory,
-  callRecall,
-  callTouchMemories,
-  callDedupCheck,
-  callArchiveStale,
-} from "./db.ts"

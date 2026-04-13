@@ -5,7 +5,7 @@ import { embed, resetClient } from "../embeddings.ts"
 const mockCreate = mock(() =>
   Promise.resolve({
     data: [{ embedding: new Array(1536).fill(0.1) }],
-  })
+  }),
 )
 
 mock.module("openai", () => ({

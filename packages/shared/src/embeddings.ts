@@ -28,7 +28,7 @@ function getClient(apiKey: string): OpenAI {
 export async function embed(
   text: string,
   apiKey: string,
-  model: string = "text-embedding-3-small"
+  model: string = "text-embedding-3-small",
 ): Promise<number[]> {
   if (!text.trim()) {
     throw new Error("Cannot generate embedding for empty text")
