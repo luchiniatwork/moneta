@@ -79,31 +79,31 @@ Estimated total: **~7 working days** for a single engineer.
 
 ### Server setup
 
-- [ ] `server.ts` — MCP server scaffolding using `@modelcontextprotocol/sdk`
+- [x] `server.ts` — MCP server scaffolding using `@modelcontextprotocol/sdk`
       with stdio transport
-- [ ] Read `MONETA_AGENT_ID` and `MONETA_PROJECT_ID` from config at
+- [x] Read `MONETA_AGENT_ID` and `MONETA_PROJECT_ID` from config at
       startup, inject into all tool handlers
-- [ ] Agent identity decomposition: parse `alice/code-reviewer` into
+- [x] Agent identity decomposition: parse `alice/code-reviewer` into
       `{created_by, engineer, agent_type}` per SPEC section 4.1
 
 ### Core tools
 
-- [ ] `tools/remember.ts`
-  - [ ] Accept `content`, `tags?`, `repo?`, `importance?`
-  - [ ] Validate content (non-empty, under `MAX_CONTENT_LENGTH`)
-  - [ ] Generate embedding
-  - [ ] Call `dedup_check()` — if same-agent near-dupe, update in
+- [x] `tools/remember.ts`
+  - [x] Accept `content`, `tags?`, `repo?`, `importance?`
+  - [x] Validate content (non-empty, under `MAX_CONTENT_LENGTH`)
+  - [x] Generate embedding
+  - [x] Call `dedup_check()` — if same-agent near-dupe, update in
         place; if different-agent, insert with corroboration note
-  - [ ] Set `pinned = true` when `importance === "critical"`
-  - [ ] Return `{id, content, deduplicated}`
-- [ ] `tools/recall.ts`
-  - [ ] Accept `question`, `scope?`, `limit?`, `include_archived?`
-  - [ ] Generate embedding for question
-  - [ ] Call `recall()` SQL function with scope filters
-  - [ ] Call `touch_memories()` for returned IDs
-  - [ ] If `include_archived` and results include archived memories,
+  - [x] Set `pinned = true` when `importance === "critical"`
+  - [x] Return `{id, content, deduplicated}`
+- [x] `tools/recall.ts`
+  - [x] Accept `question`, `scope?`, `limit?`, `include_archived?`
+  - [x] Generate embedding for question
+  - [x] Call `recall()` SQL function with scope filters
+  - [x] Call `touch_memories()` for returned IDs
+  - [x] If `include_archived` and results include archived memories,
         set `archived = false` (promotion)
-  - [ ] Return results array with attribution per SPEC section 5.1
+  - [x] Return results array with attribution per SPEC section 5.1
 
 ### Smoke test
 

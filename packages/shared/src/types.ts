@@ -1,4 +1,4 @@
-import type { Generated, Insertable, Selectable, Updateable } from "kysely"
+import type { Generated, Insertable, Kysely, Selectable, Updateable } from "kysely"
 
 // ---------------------------------------------------------------------------
 // Domain types
@@ -128,6 +128,9 @@ export interface ProjectMemoryTable {
 export interface Database {
   project_memory: ProjectMemoryTable
 }
+
+/** Typed Kysely database instance for consumers that don't import Kysely directly. */
+export type MonetaDb = Kysely<Database>
 
 /** A selected row from project_memory. */
 export type MemoryRow = Selectable<ProjectMemoryTable>

@@ -27,6 +27,7 @@ export type {
   Importance,
   MemoryRow,
   MemoryUpdate,
+  MonetaDb,
   NewMemory,
   ProjectMemoryTable,
   RecallResult,
