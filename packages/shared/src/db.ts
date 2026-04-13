@@ -277,12 +277,16 @@ export async function callDedupCheck(
     )
   `.execute(db)
 
-  return rows.rows.map((r) => ({
-    id: String(r.id),
-    content: String(r.content),
-    similarity: Number(r.similarity),
-    createdBy: String(r.createdBy),
-  }))
+  return rows.rows.map((r) => {
+    // The SQL dedup_check() function returns snake_case columns
+    const raw = r as unknown as Record<string, unknown>
+    return {
+      id: String(raw.id),
+      content: String(raw.content),
+      similarity: Number(raw.similarity),
+      createdBy: String(raw.created_by),
+    }
+  })
 }
 
 /** Archive stale memories. Returns count of archived rows. */
@@ -302,19 +306,21 @@ export async function callArchiveStale(
 // ---------------------------------------------------------------------------
 
 function mapRecallRow(row: RecallResult): RecallResult {
+  // The SQL recall() function returns snake_case columns; cast to access raw keys
+  const raw = row as unknown as Record<string, unknown>
   return {
-    id: String(row.id),
-    content: String(row.content),
-    similarity: Number(row.similarity),
-    createdBy: String(row.createdBy),
-    engineer: row.engineer ? String(row.engineer) : null,
-    repo: row.repo ? String(row.repo) : null,
-    tags: Array.isArray(row.tags) ? row.tags : [],
-    importance: row.importance as RecallResult["importance"],
-    pinned: Boolean(row.pinned),
-    archived: Boolean(row.archived),
-    accessCount: Number(row.accessCount),
-    createdAt: new Date(row.createdAt),
-    lastAccessedAt: new Date(row.lastAccessedAt),
+    id: String(raw.id),
+    content: String(raw.content),
+    similarity: Number(raw.similarity),
+    createdBy: String(raw.created_by),
+    engineer: raw.engineer ? String(raw.engineer) : null,
+    repo: raw.repo ? String(raw.repo) : null,
+    tags: Array.isArray(raw.tags) ? (raw.tags as string[]) : [],
+    importance: raw.importance as RecallResult["importance"],
+    pinned: Boolean(raw.pinned),
+    archived: Boolean(raw.archived),
+    accessCount: Number(raw.access_count),
+    createdAt: new Date(raw.created_at as string),
+    lastAccessedAt: new Date(raw.last_accessed_at as string),
   }
 }

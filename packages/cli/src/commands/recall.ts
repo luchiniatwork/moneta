@@ -7,8 +7,8 @@ import { pc, printJson, printTable, relativeTime, truncate } from "../format.ts"
 // Types
 // ---------------------------------------------------------------------------
 
-/** Options parsed from CLI flags for the search command. */
-export interface SearchOptions {
+/** Options parsed from CLI flags for the recall command. */
+export interface RecallOptions {
   limit?: string
   threshold?: string
   agent?: string
@@ -24,7 +24,7 @@ export interface SearchOptions {
 // ---------------------------------------------------------------------------
 
 /**
- * Execute the `moneta search <question>` command.
+ * Execute the `moneta recall <question>` command.
  *
  * Performs semantic search by embedding the question, querying the database,
  * touching returned memories (resetting their archival clock), and optionally
@@ -34,9 +34,9 @@ export interface SearchOptions {
  * @param options - CLI flag values
  * @param ctx - CLI context with config and database
  */
-export async function handleSearch(
+export async function handleRecall(
   question: string,
-  options: SearchOptions,
+  options: RecallOptions,
   ctx: CliContext,
 ): Promise<void> {
   const { config, db } = ctx
@@ -75,6 +75,7 @@ export async function handleSearch(
     const archivedResults = results.filter((r) => r.archived)
     for (const result of archivedResults) {
       await updateMemory(db, result.id, { archived: false })
+      result.archived = false
     }
   }
 
@@ -89,7 +90,7 @@ export async function handleSearch(
     return
   }
 
-  printSearchResults(results)
+  printRecallResults(results)
   console.log()
   console.log(pc.dim(`${results.length} results (threshold: ${threshold.toFixed(2)})`))
 }
@@ -98,7 +99,7 @@ export async function handleSearch(
 // Formatting
 // ---------------------------------------------------------------------------
 
-function printSearchResults(results: RecallResult[]): void {
+function printRecallResults(results: RecallResult[]): void {
   const columns = [
     { label: "#", width: 3, align: "right" as const },
     { label: "Score", width: 5 },

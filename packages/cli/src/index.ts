@@ -7,8 +7,9 @@ import { handleForget } from "./commands/forget.ts"
 import { handleImport } from "./commands/import.ts"
 import { handleList } from "./commands/list.ts"
 import { handlePin } from "./commands/pin.ts"
+import { handleRecall } from "./commands/recall.ts"
+import { handleRemember } from "./commands/remember.ts"
 import { handleRestore } from "./commands/restore.ts"
-import { handleSearch } from "./commands/search.ts"
 import { handleShow } from "./commands/show.ts"
 import { handleStats } from "./commands/stats.ts"
 import { handleUnpin } from "./commands/unpin.ts"
@@ -26,11 +27,33 @@ program
   .version("0.0.1")
 
 // ---------------------------------------------------------------------------
-// moneta search <question>
+// moneta remember <content>
 // ---------------------------------------------------------------------------
 
 program
-  .command("search")
+  .command("remember")
+  .description("Store a new memory in the project")
+  .argument("<content>", "The fact to remember (clear, self-contained statement)")
+  .option("--tags <tags>", "Free-form tags (comma-separated)")
+  .option("--repo <name>", "Repository this memory relates to")
+  .option("--importance <level>", 'Importance: "normal", "high", or "critical"')
+  .option("--agent <identity>", "Agent identity (overrides MONETA_AGENT_ID)")
+  .option("--json", "Output as JSON")
+  .action(async (content: string, options: Record<string, unknown>) => {
+    const ctx = await createContext()
+    try {
+      await handleRemember(content, options, ctx)
+    } finally {
+      await destroyContext(ctx)
+    }
+  })
+
+// ---------------------------------------------------------------------------
+// moneta recall <question>
+// ---------------------------------------------------------------------------
+
+program
+  .command("recall")
   .description("Semantic search — find memories by asking a question")
   .argument("<question>", "Natural language question or topic")
   .option("-n, --limit <number>", "Max results")
@@ -44,7 +67,7 @@ program
   .action(async (question: string, options: Record<string, unknown>) => {
     const ctx = await createContext()
     try {
-      await handleSearch(question, options, ctx)
+      await handleRecall(question, options, ctx)
     } finally {
       await destroyContext(ctx)
     }

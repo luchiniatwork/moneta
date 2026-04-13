@@ -42,6 +42,7 @@ const { handleArchive } = await import("../commands/archive.ts")
 const { handleRestore } = await import("../commands/restore.ts")
 const { handleForget } = await import("../commands/forget.ts")
 const { handleCorrect } = await import("../commands/correct.ts")
+const { handleRemember } = await import("../commands/remember.ts")
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -84,6 +85,16 @@ function fakeMemoryRow(overrides?: Partial<MemoryRow>): MemoryRow {
   }
 }
 
+function fakeDedupMatch(overrides?: Partial<DedupMatch>): DedupMatch {
+  return {
+    id: FAKE_UUID,
+    content: "Auth service uses JWT with RS256",
+    similarity: 0.97,
+    createdBy: "alice/code-reviewer",
+    ...overrides,
+  }
+}
+
 // biome-ignore lint/suspicious/noExplicitAny: mock db for testing
 const fakeDb = {} as any
 
@@ -110,6 +121,7 @@ beforeEach(() => {
   mockInsertMemory.mockClear()
   mockCallDedupCheck.mockClear()
   mockEmbedBatch.mockClear()
+  mockParseAgentId.mockClear()
 
   // Reset default implementations
   mockEmbed.mockImplementation(() => Promise.resolve(FAKE_EMBEDDING))
@@ -120,6 +132,11 @@ beforeEach(() => {
   mockInsertMemory.mockImplementation(() => Promise.resolve(fakeMemoryRow()))
   mockCallDedupCheck.mockImplementation(() => Promise.resolve([]))
   mockEmbedBatch.mockImplementation(() => Promise.resolve([FAKE_EMBEDDING]))
+  mockParseAgentId.mockImplementation((id: string) => ({
+    createdBy: id,
+    engineer: id.split("/")[0] === "auto" ? null : (id.split("/")[0] ?? null),
+    agentType: id.split("/")[1] ?? id,
+  }))
 
   logOutput = []
   console.log = (...args: unknown[]) => {
@@ -129,6 +146,190 @@ beforeEach(() => {
 
 afterEach(() => {
   console.log = originalLog
+})
+
+// ---------------------------------------------------------------------------
+// remember
+// ---------------------------------------------------------------------------
+
+describe("handleRemember", () => {
+  it("generates an embedding and inserts a new memory", async () => {
+    const ctx = fakeContext({ agentId: "alice/architect" })
+    await handleRemember("Frontend uses React 19", {}, ctx)
+
+    expect(mockEmbed).toHaveBeenCalledWith(
+      "Frontend uses React 19",
+      "sk-test",
+      "text-embedding-3-small",
+    )
+    expect(mockCallDedupCheck).toHaveBeenCalledTimes(1)
+    expect(mockInsertMemory).toHaveBeenCalledTimes(1)
+
+    const args = mockInsertMemory.mock.calls[0] as unknown[]
+    const memory = args[1] as Record<string, unknown>
+    expect(memory.project_id).toBe("test-project")
+    expect(memory.content).toBe("Frontend uses React 19")
+    expect(memory.created_by).toBe("alice/architect")
+    expect(memory.engineer).toBe("alice")
+    expect(memory.agent_type).toBe("architect")
+    expect(memory.importance).toBe("normal")
+    expect(memory.pinned).toBe(false)
+  })
+
+  it("uses --agent flag over config.agentId", async () => {
+    const ctx = fakeContext({ agentId: "alice/architect" })
+    await handleRemember("A fact", { agent: "bob/debugger" }, ctx)
+
+    expect(mockParseAgentId).toHaveBeenCalledWith("bob/debugger")
+    const args = mockInsertMemory.mock.calls[0] as unknown[]
+    const memory = args[1] as Record<string, unknown>
+    expect(memory.created_by).toBe("bob/debugger")
+  })
+
+  it("throws when no agent identity is available", async () => {
+    const ctx = fakeContext()
+    await expect(handleRemember("A fact", {}, ctx)).rejects.toThrow("Agent identity required")
+  })
+
+  it("throws on empty content", async () => {
+    const ctx = fakeContext({ agentId: "alice/architect" })
+    await expect(handleRemember("", {}, ctx)).rejects.toThrow("must not be empty")
+  })
+
+  it("throws on whitespace-only content", async () => {
+    const ctx = fakeContext({ agentId: "alice/architect" })
+    await expect(handleRemember("   ", {}, ctx)).rejects.toThrow("must not be empty")
+  })
+
+  it("throws when content exceeds max length", async () => {
+    const ctx = fakeContext({ agentId: "alice/architect", maxContentLength: 10 })
+    await expect(handleRemember("This is way too long for the limit", {}, ctx)).rejects.toThrow(
+      "exceeds maximum length",
+    )
+  })
+
+  it("throws on invalid importance value", async () => {
+    const ctx = fakeContext({ agentId: "alice/architect" })
+    await expect(handleRemember("A fact", { importance: "urgent" }, ctx)).rejects.toThrow(
+      'Invalid importance "urgent"',
+    )
+  })
+
+  it("auto-pins critical memories", async () => {
+    const ctx = fakeContext({ agentId: "alice/architect" })
+    await handleRemember("Critical security flaw found", { importance: "critical" }, ctx)
+
+    const args = mockInsertMemory.mock.calls[0] as unknown[]
+    const memory = args[1] as Record<string, unknown>
+    expect(memory.importance).toBe("critical")
+    expect(memory.pinned).toBe(true)
+  })
+
+  it("passes tags and repo to insertMemory", async () => {
+    const ctx = fakeContext({ agentId: "alice/architect" })
+    await handleRemember("Uses Tailwind v4", { tags: "frontend,styling", repo: "web-app" }, ctx)
+
+    const args = mockInsertMemory.mock.calls[0] as unknown[]
+    const memory = args[1] as Record<string, unknown>
+    expect(memory.tags).toEqual(["frontend", "styling"])
+    expect(memory.repo).toBe("web-app")
+  })
+
+  it("updates in place when same-agent near-duplicate exists", async () => {
+    mockCallDedupCheck.mockImplementation(() =>
+      Promise.resolve([fakeDedupMatch({ createdBy: "alice/architect" })]),
+    )
+
+    const ctx = fakeContext({ agentId: "alice/architect" })
+    await handleRemember("Auth uses JWT with RS256 and 30min expiry", {}, ctx)
+
+    // Should update, not insert
+    expect(mockUpdateMemory).toHaveBeenCalledTimes(1)
+    expect(mockInsertMemory).not.toHaveBeenCalled()
+
+    const args = mockUpdateMemory.mock.calls[0] as unknown[]
+    expect(args[1]).toBe(FAKE_UUID)
+    const updates = args[2] as Record<string, unknown>
+    expect(updates.content).toBe("Auth uses JWT with RS256 and 30min expiry")
+    expect(updates.newEmbedding).toEqual(FAKE_EMBEDDING)
+  })
+
+  it("prints dedup message when same-agent near-duplicate exists", async () => {
+    mockCallDedupCheck.mockImplementation(() =>
+      Promise.resolve([fakeDedupMatch({ createdBy: "alice/architect" })]),
+    )
+
+    const ctx = fakeContext({ agentId: "alice/architect" })
+    await handleRemember("Updated fact", {}, ctx)
+
+    const output = logOutput.join("\n")
+    expect(output).toContain("Updated existing memory")
+    expect(output).toContain("a1b2c3")
+  })
+
+  it("inserts with corroborated tag when different-agent near-duplicate exists", async () => {
+    mockCallDedupCheck.mockImplementation(() =>
+      Promise.resolve([fakeDedupMatch({ createdBy: "bob/debugger" })]),
+    )
+
+    const ctx = fakeContext({ agentId: "alice/architect" })
+    await handleRemember("Auth uses JWT", { tags: "security" }, ctx)
+
+    expect(mockInsertMemory).toHaveBeenCalledTimes(1)
+    expect(mockUpdateMemory).not.toHaveBeenCalled()
+
+    const args = mockInsertMemory.mock.calls[0] as unknown[]
+    const memory = args[1] as Record<string, unknown>
+    expect(memory.tags).toEqual(["security", "corroborated"])
+  })
+
+  it("inserts without corroborated tag when no duplicate exists", async () => {
+    const ctx = fakeContext({ agentId: "alice/architect" })
+    await handleRemember("Brand new fact", { tags: "misc" }, ctx)
+
+    const args = mockInsertMemory.mock.calls[0] as unknown[]
+    const memory = args[1] as Record<string, unknown>
+    expect(memory.tags).toEqual(["misc"])
+  })
+
+  it("outputs JSON when --json flag is set", async () => {
+    const ctx = fakeContext({ agentId: "alice/architect" })
+    await handleRemember("A fact", { json: true }, ctx)
+
+    expect(logOutput).toHaveLength(1)
+    const parsed = JSON.parse(logOutput[0] as string)
+    expect(parsed.id).toBe(FAKE_UUID)
+    expect(parsed.content).toBe("A fact")
+    expect(parsed.deduplicated).toBe(false)
+  })
+
+  it("outputs JSON with deduplicated=true on same-agent dedup", async () => {
+    mockCallDedupCheck.mockImplementation(() =>
+      Promise.resolve([fakeDedupMatch({ createdBy: "alice/architect" })]),
+    )
+
+    const ctx = fakeContext({ agentId: "alice/architect" })
+    await handleRemember("Updated fact", { json: true }, ctx)
+
+    const parsed = JSON.parse(logOutput[0] as string)
+    expect(parsed.deduplicated).toBe(true)
+  })
+
+  it("prints confirmation message on successful insert", async () => {
+    const ctx = fakeContext({ agentId: "alice/architect" })
+    await handleRemember("Frontend uses React 19", {}, ctx)
+
+    const output = logOutput.join("\n")
+    expect(output).toContain("Remembered a1b2c3")
+    expect(output).toContain("Frontend uses React 19")
+  })
+
+  it("wraps embedding API errors with helpful message", async () => {
+    mockEmbed.mockImplementation(() => Promise.reject(new Error("API key invalid")))
+
+    const ctx = fakeContext({ agentId: "alice/architect" })
+    await expect(handleRemember("A fact", {}, ctx)).rejects.toThrow("Failed to generate embedding")
+  })
 })
 
 // ---------------------------------------------------------------------------

@@ -29,7 +29,7 @@ mock.module("@moneta/shared", () => ({
 }))
 
 // Import handlers after mocking
-const { handleSearch } = await import("../commands/search.ts")
+const { handleRecall } = await import("../commands/recall.ts")
 const { handleShow } = await import("../commands/show.ts")
 
 // ---------------------------------------------------------------------------
@@ -140,13 +140,13 @@ afterEach(() => {
 })
 
 // ---------------------------------------------------------------------------
-// search
+// recall
 // ---------------------------------------------------------------------------
 
-describe("handleSearch", () => {
+describe("handleRecall", () => {
   it("generates an embedding for the question", async () => {
     const ctx = fakeContext()
-    await handleSearch("How does auth work?", {}, ctx)
+    await handleRecall("How does auth work?", {}, ctx)
 
     expect(mockEmbed).toHaveBeenCalledTimes(1)
     expect(mockEmbed).toHaveBeenCalledWith(
@@ -158,7 +158,7 @@ describe("handleSearch", () => {
 
   it("calls callRecall with the embedding and default config values", async () => {
     const ctx = fakeContext()
-    await handleSearch("How does auth work?", {}, ctx)
+    await handleRecall("How does auth work?", {}, ctx)
 
     expect(mockCallRecall).toHaveBeenCalledTimes(1)
     const args = mockCallRecall.mock.calls[0] as unknown[]
@@ -172,7 +172,7 @@ describe("handleSearch", () => {
 
   it("passes CLI flag values to callRecall", async () => {
     const ctx = fakeContext()
-    await handleSearch(
+    await handleRecall(
       "auth?",
       {
         limit: "5",
@@ -203,7 +203,7 @@ describe("handleSearch", () => {
     )
 
     const ctx = fakeContext()
-    await handleSearch("auth?", {}, ctx)
+    await handleRecall("auth?", {}, ctx)
 
     expect(mockCallTouchMemories).toHaveBeenCalledTimes(1)
     const args = mockCallTouchMemories.mock.calls[0] as unknown[]
@@ -212,7 +212,7 @@ describe("handleSearch", () => {
 
   it("does not call touchMemories when no results", async () => {
     const ctx = fakeContext()
-    await handleSearch("nonexistent topic", {}, ctx)
+    await handleRecall("nonexistent topic", {}, ctx)
 
     expect(mockCallTouchMemories).not.toHaveBeenCalled()
   })
@@ -226,7 +226,7 @@ describe("handleSearch", () => {
     )
 
     const ctx = fakeContext()
-    await handleSearch("auth?", { archived: true }, ctx)
+    await handleRecall("auth?", { archived: true }, ctx)
 
     // Should only promote the archived one
     expect(mockUpdateMemory).toHaveBeenCalledTimes(1)
@@ -239,7 +239,7 @@ describe("handleSearch", () => {
     mockCallRecall.mockImplementation(() => Promise.resolve([fakeRecallResult()]))
 
     const ctx = fakeContext()
-    await handleSearch("auth?", {}, ctx)
+    await handleRecall("auth?", {}, ctx)
 
     expect(mockUpdateMemory).not.toHaveBeenCalled()
   })
@@ -249,7 +249,7 @@ describe("handleSearch", () => {
     mockCallRecall.mockImplementation(() => Promise.resolve(results))
 
     const ctx = fakeContext()
-    await handleSearch("auth?", { json: true }, ctx)
+    await handleRecall("auth?", { json: true }, ctx)
 
     expect(logOutput).toHaveLength(1)
     const parsed = JSON.parse(logOutput[0] as string)
