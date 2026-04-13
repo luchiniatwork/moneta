@@ -7,14 +7,14 @@ import { Footer } from "./components/Footer.tsx"
 import { Header } from "./components/Header.tsx"
 import { HelpOverlay } from "./components/HelpOverlay.tsx"
 import { MemoryList } from "./components/MemoryList.tsx"
-import { SearchBar } from "./components/SearchBar.tsx"
+import { RecallBar } from "./components/RecallBar.tsx"
 import { StatsView } from "./components/StatsView.tsx"
 import { TagEditor } from "./components/TagEditor.tsx"
 import { useTuiContext } from "./context.tsx"
 import { useCounts } from "./hooks/useCounts.ts"
 import { useList } from "./hooks/useList.ts"
 import { useMemoryActions } from "./hooks/useMemoryActions.ts"
-import { useSearch } from "./hooks/useSearch.ts"
+import { useRecall } from "./hooks/useRecall.ts"
 import { useStats } from "./hooks/useStats.ts"
 import type { MemoryItem, Mode, Overlay } from "./types.ts"
 
@@ -25,7 +25,7 @@ import type { MemoryItem, Mode, Overlay } from "./types.ts"
 /**
  * Root component for the Moneta TUI.
  *
- * Manages mode switching (search/list/stats), overlays (help/confirm/
+ * Manages mode switching (recall/list/stats), overlays (help/confirm/
  * filters/tags), input focus, and global keybindings. Delegates data
  * fetching to custom hooks and rendering to child components.
  */
@@ -38,10 +38,10 @@ export function App(): React.JSX.Element {
   const termWidth = stdout.columns ?? 80
   const termHeight = stdout.rows ?? 24
   const detailWidth = Math.max(30, Math.floor(termWidth * 0.35))
-  const listHeight = termHeight - 4 // header + search/filter bar + footer + padding
+  const listHeight = termHeight - 4 // header + recall/filter bar + footer + padding
 
   // Mode & overlay state
-  const [mode, setMode] = useState<Mode>("search")
+  const [mode, setMode] = useState<Mode>("recall")
   const [overlay, setOverlay] = useState<Overlay>("none")
   const [showDetail, setShowDetail] = useState(false)
   const [inputFocused, setInputFocused] = useState(true)
@@ -52,7 +52,7 @@ export function App(): React.JSX.Element {
 
   // Data hooks
   const { counts, refresh: refreshCounts } = useCounts()
-  const search = useSearch()
+  const recallHook = useRecall()
   const list = useList()
   const stats = useStats()
   const actions = useMemoryActions()
@@ -61,9 +61,9 @@ export function App(): React.JSX.Element {
   // Active items for current mode
   // ---------------------------------------------------------------------------
 
-  const activeItems = mode === "search" ? search.results : list.memories
-  const activeIndex = mode === "search" ? search.selectedIndex : list.selectedIndex
-  const setActiveIndex = mode === "search" ? search.setSelectedIndex : list.setSelectedIndex
+  const activeItems = mode === "recall" ? recallHook.results : list.memories
+  const activeIndex = mode === "recall" ? recallHook.selectedIndex : list.selectedIndex
+  const setActiveIndex = mode === "recall" ? recallHook.setSelectedIndex : list.setSelectedIndex
   const selectedItem: MemoryItem | undefined = activeItems[activeIndex]
 
   // ---------------------------------------------------------------------------
@@ -130,7 +130,7 @@ export function App(): React.JSX.Element {
       }
 
       // -----------------------------------------------------------------------
-      // When the search bar is focused, only handle a small set of
+      // When the recall bar is focused, only handle a small set of
       // control/meta keys. All printable characters must pass through
       // to the TextInput component.
       // -----------------------------------------------------------------------
@@ -177,7 +177,7 @@ export function App(): React.JSX.Element {
       // Stats mode toggle
       if (key.ctrl && input === "s") {
         if (mode === "stats") {
-          setMode("search")
+          setMode("recall")
         } else {
           void stats.refresh()
           setMode("stats")
@@ -188,12 +188,12 @@ export function App(): React.JSX.Element {
       // Mode switching with Tab
       if (key.tab) {
         if (mode === "stats") {
-          setMode("search")
+          setMode("recall")
           setInputFocused(true)
         } else {
-          const nextMode = mode === "search" ? "list" : "search"
+          const nextMode = mode === "recall" ? "list" : "recall"
           setMode(nextMode)
-          setInputFocused(nextMode === "search")
+          setInputFocused(nextMode === "recall")
         }
         return
       }
@@ -201,7 +201,7 @@ export function App(): React.JSX.Element {
       // Stats mode only handles the keys above
       if (mode === "stats") return
 
-      // Search bar focus
+      // Recall bar focus
       if (input === "/") {
         setInputFocused(true)
         return
@@ -272,7 +272,7 @@ export function App(): React.JSX.Element {
   // Error display
   // ---------------------------------------------------------------------------
 
-  const errorMessage = actions.error || search.error || list.error
+  const errorMessage = actions.error || recallHook.error || list.error
 
   // ---------------------------------------------------------------------------
   // Render
@@ -294,17 +294,17 @@ export function App(): React.JSX.Element {
           />
         ) : (
           <>
-            {/* Search bar (search mode only) */}
-            {mode === "search" && (
-              <SearchBar
-                value={search.query}
-                onChange={search.setQuery}
+            {/* Recall bar (recall mode only) */}
+            {mode === "recall" && (
+              <RecallBar
+                value={recallHook.query}
+                onChange={recallHook.setQuery}
                 onSubmit={(q) => {
-                  void search.search(q)
+                  void recallHook.recall(q)
                   setInputFocused(false)
                 }}
                 isFocused={inputFocused}
-                loading={search.loading}
+                loading={recallHook.loading}
               />
             )}
 
@@ -326,7 +326,7 @@ export function App(): React.JSX.Element {
                 <MemoryList
                   items={activeItems}
                   selectedIndex={activeIndex}
-                  showSimilarity={mode === "search"}
+                  showSimilarity={mode === "recall"}
                   height={listHeight}
                 />
               </Box>

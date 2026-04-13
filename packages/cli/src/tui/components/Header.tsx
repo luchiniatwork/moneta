@@ -12,7 +12,7 @@ interface HeaderProps {
 }
 
 const MODE_LABELS: Record<Mode, string> = {
-  search: "Search",
+  recall: "Recall",
   list: "List",
   stats: "Stats",
 }

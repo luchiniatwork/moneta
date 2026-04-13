@@ -243,7 +243,7 @@ Estimated total: **~7 working days** for a single engineer.
 > **Estimate:** 2 days
 >
 > **Done when:** `moneta tui` launches an interactive interface with
-> search mode, list mode, and stats mode. All keybindings from
+> recall mode, list mode, and stats mode. All keybindings from
 > SPEC section 7.3 work.
 
 ### Framework setup
@@ -261,10 +261,10 @@ Estimated total: **~7 working days** for a single engineer.
 - [x] `moneta tui` command + `moneta` (no args) default action
       registered in CLI entry point
 
-### Search mode (default)
+### Recall mode (default)
 
-- [x] Search input bar at top — type question, Enter to search
-      (`SearchBar.tsx` using `ink-text-input`)
+- [x] Recall input bar at top — type question, Enter to recall
+      (`RecallBar.tsx` using `ink-text-input`)
 - [x] Results list (left panel): similarity score, pin indicator,
       truncated content, attribution, relative time
       (`MemoryList.tsx` with windowed rendering)
@@ -272,7 +272,7 @@ Estimated total: **~7 working days** for a single engineer.
       access stats (`DetailPanel.tsx`)
 - [x] `j`/`k` or arrow keys to navigate list
 - [x] Enter to toggle detail panel
-- [x] `/` to focus search bar, Esc to return to navigation
+- [x] `/` to focus recall bar, Esc to return to navigation
 - [x] Input-focused guard prevents printable keys (q, ?, etc.)
       from triggering global actions while typing
 
@@ -306,7 +306,7 @@ Estimated total: **~7 working days** for a single engineer.
 
 - [x] Responsive layout: windowed list adjusts to terminal height,
       detail panel width scales with terminal width
-- [x] Loading indicators for embedding generation / search
+- [x] Loading indicators for embedding generation / recall
 - [x] Error display: non-crashing error messages for DB/API
       failures (error bar in App)
 - [x] `?` / `F1` — help overlay with all keybindings

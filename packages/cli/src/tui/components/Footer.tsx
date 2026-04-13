@@ -41,8 +41,8 @@ function getHints(mode: Mode, overlay: Overlay, inputFocused: boolean): string {
   if (mode === "stats") return "[Tab] Back  [?] Help  [q] Quit"
 
   const nav = inputFocused
-    ? "[Enter] Search  [Esc] Navigate"
-    : "[/] Search  [j/k] Navigate  [Enter] Detail"
+    ? "[Enter] Recall  [Esc] Navigate"
+    : "[/] Recall  [j/k] Navigate  [Enter] Detail"
 
   const actions = "[p] Pin  [a] Archive  [d] Delete  [t] Tags"
   const modes = "[Tab] Mode  [Ctrl+S] Stats  [?] Help  [q] Quit"

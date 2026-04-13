@@ -20,12 +20,12 @@ export function HelpOverlay(): React.JSX.Element {
       <Binding keys="j / Down" action="Move selection down" />
       <Binding keys="k / Up" action="Move selection up" />
       <Binding keys="Enter" action="Toggle detail panel" />
-      <Binding keys="/" action="Focus search bar" />
-      <Binding keys="Esc" action="Unfocus search / close overlay" />
+      <Binding keys="/" action="Focus recall bar" />
+      <Binding keys="Esc" action="Unfocus recall bar / close overlay" />
       <Text> </Text>
 
       <Text bold>Modes</Text>
-      <Binding keys="Tab" action="Switch between Search and List mode" />
+      <Binding keys="Tab" action="Switch between Recall and List mode" />
       <Binding keys="Ctrl+S" action="Stats dashboard" />
       <Text> </Text>
 

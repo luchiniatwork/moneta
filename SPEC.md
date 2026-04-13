@@ -625,12 +625,12 @@ Note: `OPENAI_API_KEY` is read from the standard environment variable.
 
 ### 7.2 CLI Commands
 
-#### `moneta search <question>`
+#### `moneta recall <question>`
 
 Semantic search — the same operation agents use.
 
 ```
-$ moneta search "How does authentication work?"
+$ moneta recall "How does authentication work?"
 
   #  Score  Content                                          By                    Accessed
   1  0.87   Auth service uses JWT with RS256 signing,        alice/code-reviewer   2h ago
@@ -835,7 +835,7 @@ $ moneta tui
 ```
 ┌─ Agent Shared Memory ─ acme-platform ─ 342 active / 47 archived / 23 pinned ─┐
 │                                                                                 │
-│  Search: How does authentication work?_                          [F1 Help]     │
+│  Recall: How does authentication work?_                          [F1 Help]     │
 │                                                                                 │
 │  ┌─ Results ───────────────────────────────────────────────────┬─ Detail ──────┐│
 │  │                                                             │               ││
@@ -858,7 +858,7 @@ $ moneta tui
 │  │                                                             │               ││
 │  └─────────────────────────────────────────────────────────────┴───────────────┘│
 │                                                                                 │
-│  [/] Search  [p] Pin/Unpin  [a] Archive  [d] Delete  [e] Edit  [q] Quit       │
+│  [/] Recall  [p] Pin/Unpin  [a] Archive  [d] Delete  [e] Edit  [q] Quit       │
 └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -866,7 +866,7 @@ $ moneta tui
 
 | Key | Action |
 |---|---|
-| `/` | Focus search bar. Type a question, press Enter to search. |
+| `/` | Focus recall bar. Type a question, press Enter to recall. |
 | `↑` `↓` or `j` `k` | Navigate memory list |
 | `Enter` | Toggle detail panel for selected memory |
 | `p` | Pin / unpin selected memory |
@@ -875,14 +875,14 @@ $ moneta tui
 | `e` | Edit/correct selected memory (opens $EDITOR) |
 | `t` | Add/remove tags on selected memory |
 | `f` | Open filter panel (agent, engineer, repo, tags, archived) |
-| `s` | Toggle sort: by similarity (search mode) / by date (list mode) |
-| `Tab` | Switch between search mode and list (chronological) mode |
+| `s` | Toggle sort: by similarity (recall mode) / by date (list mode) |
+| `Tab` | Switch between recall mode and list (chronological) mode |
 | `?` or `F1` | Show help |
 | `q` or `Ctrl+C` | Quit |
 
 #### Modes
 
-1. **Search mode** (default): Type a question, see semantically
+1. **Recall mode** (default): Type a question, see semantically
    ranked results. This is the primary mode — mirrors what agents
    see.
 
@@ -963,7 +963,7 @@ moneta/
 │   └── cli/                     # CLI / TUI for humans
 │       ├── src/
 │       │   ├── commands/
-│       │   │   ├── search.ts
+│       │   │   ├── recall.ts
 │       │   │   ├── list.ts
 │       │   │   ├── show.ts
 │       │   │   ├── pin.ts

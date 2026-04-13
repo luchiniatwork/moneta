@@ -5,7 +5,7 @@ import type { Importance } from "@moneta/shared"
 // ---------------------------------------------------------------------------
 
 /** Active view mode in the TUI. */
-export type Mode = "search" | "list" | "stats"
+export type Mode = "recall" | "list" | "stats"
 
 /** Active overlay (rendered on top of the current mode). */
 export type Overlay = "none" | "help" | "confirm" | "filters" | "tags"

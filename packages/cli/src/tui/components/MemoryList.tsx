@@ -9,7 +9,7 @@ import type { MemoryItem } from "../types.ts"
 interface MemoryListProps {
   items: MemoryItem[]
   selectedIndex: number
-  /** Whether to show similarity scores (search mode) or age (list mode). */
+  /** Whether to show similarity scores (recall mode) or age (list mode). */
   showSimilarity: boolean
   /** Available height for the list (in terminal rows). */
   height: number

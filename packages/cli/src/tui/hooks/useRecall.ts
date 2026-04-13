@@ -5,27 +5,27 @@ import { fromRecallResult } from "../convert.ts"
 import type { MemoryItem } from "../types.ts"
 
 // ---------------------------------------------------------------------------
-// useSearch — semantic search
+// useRecall — semantic recall
 // ---------------------------------------------------------------------------
 
-interface UseSearchReturn {
+interface UseRecallReturn {
   query: string
   setQuery: (q: string) => void
   results: MemoryItem[]
   loading: boolean
   error: string | null
-  search: (q: string) => Promise<void>
+  recall: (q: string) => Promise<void>
   selectedIndex: number
   setSelectedIndex: (i: number) => void
   clearError: () => void
 }
 
 /**
- * Manage semantic search state: query, embedding, recall, touch, and results.
+ * Manage semantic recall state: query, embedding, recall, touch, and results.
  *
- * @returns Search state and actions
+ * @returns Recall state and actions
  */
-export function useSearch(): UseSearchReturn {
+export function useRecall(): UseRecallReturn {
   const { config, db } = useTuiContext()
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<MemoryItem[]>([])
@@ -33,7 +33,7 @@ export function useSearch(): UseSearchReturn {
   const [error, setError] = useState<string | null>(null)
   const [selectedIndex, setSelectedIndex] = useState(0)
 
-  const search = useCallback(
+  const recall = useCallback(
     async (q: string) => {
       if (!q.trim()) return
       setLoading(true)
@@ -80,7 +80,7 @@ export function useSearch(): UseSearchReturn {
     results,
     loading,
     error,
-    search,
+    recall,
     selectedIndex,
     setSelectedIndex,
     clearError,
