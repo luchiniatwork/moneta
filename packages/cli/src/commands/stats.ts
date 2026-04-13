@@ -12,7 +12,7 @@ export interface StatsOptions {
   json?: boolean
 }
 
-interface MemoryStats {
+export interface MemoryStats {
   total: number
   active: number
   archived: number
@@ -54,7 +54,17 @@ export async function handleStats(options: StatsOptions, ctx: CliContext): Promi
 // Data gathering
 // ---------------------------------------------------------------------------
 
-async function gatherStats(db: MonetaDb, projectId: string): Promise<MemoryStats> {
+/**
+ * Gather aggregate memory statistics from the database.
+ *
+ * Runs multiple independent queries in parallel for efficiency.
+ * Used by both the CLI `stats` command and the TUI stats dashboard.
+ *
+ * @param db - Kysely database instance
+ * @param projectId - Project identifier
+ * @returns Aggregate statistics
+ */
+export async function gatherStats(db: MonetaDb, projectId: string): Promise<MemoryStats> {
   // Run all independent queries in parallel
   const [counts, byEngineer, byRepo, topTags, archivalMetrics, mostAccessed] = await Promise.all([
     fetchCounts(db, projectId),

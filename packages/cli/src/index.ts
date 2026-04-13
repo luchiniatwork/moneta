@@ -14,6 +14,7 @@ import { handleShow } from "./commands/show.ts"
 import { handleStats } from "./commands/stats.ts"
 import { handleUnpin } from "./commands/unpin.ts"
 import { createContext, destroyContext } from "./context.ts"
+import { launchTui } from "./tui/index.tsx"
 
 // ---------------------------------------------------------------------------
 // Program
@@ -271,6 +272,35 @@ program
       await destroyContext(ctx)
     }
   })
+
+// ---------------------------------------------------------------------------
+// moneta tui
+// ---------------------------------------------------------------------------
+
+program
+  .command("tui")
+  .description("Launch the interactive terminal UI")
+  .action(async () => {
+    const ctx = await createContext()
+    try {
+      await launchTui(ctx)
+    } finally {
+      await destroyContext(ctx)
+    }
+  })
+
+// ---------------------------------------------------------------------------
+// Default action: launch TUI when no command is given
+// ---------------------------------------------------------------------------
+
+program.action(async () => {
+  const ctx = await createContext()
+  try {
+    await launchTui(ctx)
+  } finally {
+    await destroyContext(ctx)
+  }
+})
 
 // ---------------------------------------------------------------------------
 // Parse and run

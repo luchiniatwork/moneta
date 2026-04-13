@@ -248,51 +248,69 @@ Estimated total: **~7 working days** for a single engineer.
 
 ### Framework setup
 
-- [ ] Choose TUI framework (`ink` for React-like composition or
-      `blessed`/`neo-blessed` for lower-level control — decide
-      based on team familiarity)
-- [ ] Basic app shell: header bar with project name + counts,
+- [x] Choose TUI framework — **Ink** (React-like composition for
+      terminal UIs, with Yoga flexbox layout)
+- [x] Basic app shell: header bar with project name + counts,
       footer bar with keybinding hints, main content area
+      (`App.tsx`, `Header.tsx`, `Footer.tsx`)
+- [x] React context for CLI config + DB (`tui/context.tsx`)
+- [x] Unified `MemoryItem` type bridging `RecallResult` (camelCase)
+      and `MemoryRow` (snake_case) (`tui/types.ts`, `tui/convert.ts`)
+- [x] TUI entry point with alternate screen buffer
+      (`tui/index.tsx`)
+- [x] `moneta tui` command + `moneta` (no args) default action
+      registered in CLI entry point
 
 ### Search mode (default)
 
-- [ ] Search input bar at top — type question, Enter to search
-- [ ] Results list (left panel): similarity score, pin indicator,
+- [x] Search input bar at top — type question, Enter to search
+      (`SearchBar.tsx` using `ink-text-input`)
+- [x] Results list (left panel): similarity score, pin indicator,
       truncated content, attribution, relative time
-- [ ] Detail panel (right panel): full content, all metadata,
-      access stats
-- [ ] `j`/`k` or arrow keys to navigate list
-- [ ] Enter to toggle detail panel
+      (`MemoryList.tsx` with windowed rendering)
+- [x] Detail panel (right panel): full content, all metadata,
+      access stats (`DetailPanel.tsx`)
+- [x] `j`/`k` or arrow keys to navigate list
+- [x] Enter to toggle detail panel
+- [x] `/` to focus search bar, Esc to return to navigation
+- [x] Input-focused guard prevents printable keys (q, ?, etc.)
+      from triggering global actions while typing
 
 ### List mode
 
-- [ ] `Tab` switches to chronological list mode
-- [ ] Same list/detail layout but sorted by `created_at` desc
-- [ ] Filter panel (`f` key): text inputs for agent, engineer,
-      repo, tags; toggles for archived/pinned
+- [x] `Tab` switches to chronological list mode
+- [x] Same list/detail layout but sorted by `created_at` desc
+- [x] Filter panel (`f` key): text inputs for agent, engineer,
+      repo, tags; toggles for archived/pinned (`FilterPanel.tsx`)
+- [x] `s` key toggles sort between date and last accessed
 
 ### Inline actions
 
-- [ ] `p` — pin/unpin selected memory (instant, no confirmation)
-- [ ] `a` — archive/restore selected memory
-- [ ] `d` — delete selected memory (inline confirmation prompt)
+- [x] `p` — pin/unpin selected memory (instant, no confirmation)
+- [x] `a` — archive/restore selected memory
+- [x] `d` — delete selected memory (inline confirmation prompt,
+      `ConfirmDialog.tsx`)
 - [ ] `e` — open `$EDITOR` with memory content, save updates on
-      close (calls correct flow: re-embed on save)
-- [ ] `t` — tag editor: show current tags, add/remove
+      close (deferred — requires Ink unmount/remount)
+- [x] `t` — tag editor: show current tags, add/remove
+      (`TagEditor.tsx`)
 
 ### Stats mode
 
-- [ ] `Ctrl+S` switches to stats dashboard
-- [ ] Render same data as `moneta stats` CLI command
-- [ ] Auto-refresh on return from other modes
+- [x] `Ctrl+S` switches to stats dashboard
+- [x] Render same data as `moneta stats` CLI command
+      (`StatsView.tsx`, reuses exported `gatherStats()`)
+- [x] Auto-refresh on mode entry
 
 ### Polish
 
-- [ ] Responsive layout: handle narrow terminals gracefully
-- [ ] Loading spinners for embedding generation / search
-- [ ] Error display: non-crashing error messages for DB/API
-      failures
-- [ ] `?` / `F1` — help overlay with all keybindings
+- [x] Responsive layout: windowed list adjusts to terminal height,
+      detail panel width scales with terminal width
+- [x] Loading indicators for embedding generation / search
+- [x] Error display: non-crashing error messages for DB/API
+      failures (error bar in App)
+- [x] `?` / `F1` — help overlay with all keybindings
+      (`HelpOverlay.tsx`)
 
 ---
 
