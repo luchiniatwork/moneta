@@ -96,6 +96,38 @@ export interface Config {
 }
 
 // ---------------------------------------------------------------------------
+// Query parameters
+// ---------------------------------------------------------------------------
+
+/** Parameters for listing memories chronologically (no embedding needed). */
+export interface ListMemoriesParams {
+  /** Project identifier */
+  projectId: string
+  /** Maximum number of rows to return (default 20) */
+  limit?: number
+  /** Offset for pagination (default 0) */
+  offset?: number
+  /** Filter by agent identity (created_by) */
+  agent?: string
+  /** Filter by engineer */
+  engineer?: string
+  /** Filter by repository */
+  repo?: string
+  /** Filter by tags (must have all) */
+  tags?: string[]
+  /** Only pinned memories */
+  pinned?: boolean
+  /** Only archived memories (default false = active only) */
+  archived?: boolean
+  /** Only memories approaching archival (accessed > 20 days ago, not pinned, not archived) */
+  stale?: boolean
+  /** Column to sort by (default "created_at") */
+  orderBy?: "created_at" | "updated_at" | "last_accessed_at"
+  /** Sort direction (default "desc") */
+  orderDirection?: "asc" | "desc"
+}
+
+// ---------------------------------------------------------------------------
 // Kysely database interface
 // ---------------------------------------------------------------------------
 

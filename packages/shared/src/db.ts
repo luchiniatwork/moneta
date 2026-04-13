@@ -4,6 +4,7 @@ import postgres from "postgres"
 import type {
   Database,
   DedupMatch,
+  ListMemoriesParams,
   MemoryRow,
   MemoryUpdate,
   NewMemory,
@@ -108,6 +109,95 @@ export async function updateMemory(
 export async function deleteMemory(db: Kysely<Database>, id: string): Promise<boolean> {
   const result = await db.deleteFrom("project_memory").where("id", "=", id).executeTakeFirst()
   return (result.numDeletedRows ?? 0n) > 0n
+}
+
+// ---------------------------------------------------------------------------
+// Listing / prefix lookup
+// ---------------------------------------------------------------------------
+
+/**
+ * List memories chronologically with optional filters.
+ * Unlike `callRecall`, this does not require an embedding vector.
+ *
+ * @param db - Kysely database instance
+ * @param params - Filters, pagination, and sort options
+ * @returns Array of matching memory rows
+ */
+export async function listMemories(
+  db: Kysely<Database>,
+  params: ListMemoriesParams,
+): Promise<MemoryRow[]> {
+  const limit = params.limit ?? 20
+  const offset = params.offset ?? 0
+  const orderBy = params.orderBy ?? "created_at"
+  const orderDirection = params.orderDirection ?? "desc"
+
+  let query = db.selectFrom("project_memory").selectAll().where("project_id", "=", params.projectId)
+
+  // Archived filter: default to active only
+  if (params.stale) {
+    // Stale: accessed > 20 days ago, not pinned, not archived
+    const twentyDaysAgo = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000)
+    query = query
+      .where("last_accessed_at", "<", twentyDaysAgo)
+      .where("pinned", "=", false)
+      .where("archived", "=", false)
+  } else if (params.archived === true) {
+    query = query.where("archived", "=", true)
+  } else if (params.archived !== undefined) {
+    query = query.where("archived", "=", false)
+  } else {
+    // Default: active only
+    query = query.where("archived", "=", false)
+  }
+
+  if (params.agent !== undefined) {
+    query = query.where("created_by", "=", params.agent)
+  }
+
+  if (params.engineer !== undefined) {
+    query = query.where("engineer", "=", params.engineer)
+  }
+
+  if (params.repo !== undefined) {
+    query = query.where("repo", "=", params.repo)
+  }
+
+  if (params.pinned !== undefined) {
+    query = query.where("pinned", "=", params.pinned)
+  }
+
+  if (params.tags !== undefined && params.tags.length > 0) {
+    const tagsLiteral = `ARRAY[${params.tags.map((t) => `'${t.replace(/'/g, "''")}'`).join(",")}]::text[]`
+    query = query.where(sql<boolean>`tags @> ${sql.raw(tagsLiteral)}`)
+  }
+
+  query = query.orderBy(orderBy, orderDirection).limit(limit).offset(offset)
+
+  return await query.execute()
+}
+
+/**
+ * Find memories whose UUID starts with the given prefix.
+ * Used for short-ID lookups in the CLI (e.g. `moneta show a1b2c3`).
+ *
+ * @param db - Kysely database instance
+ * @param projectId - Project to search within
+ * @param prefix - UUID prefix string (typically 6+ characters)
+ * @returns Matching memory rows (0, 1, or multiple)
+ */
+export async function findMemoryByIdPrefix(
+  db: Kysely<Database>,
+  projectId: string,
+  prefix: string,
+): Promise<MemoryRow[]> {
+  return await db
+    .selectFrom("project_memory")
+    .selectAll()
+    .where("project_id", "=", projectId)
+    .where(sql<string>`id::text`, "like", `${prefix}%`)
+    .limit(10)
+    .execute()
 }
 
 // ---------------------------------------------------------------------------

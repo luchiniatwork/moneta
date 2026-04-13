@@ -168,34 +168,35 @@ Estimated total: **~7 working days** for a single engineer.
 
 ### CLI scaffolding
 
-- [ ] `packages/cli/src/index.ts` — entry point, arg parser
-      (use `commander` or similar lightweight lib)
-- [ ] Config loading: reuse `packages/shared` config module
-- [ ] Output formatting helpers: table renderer, color/dim for
-      terminal, `--json` flag support
-- [ ] Short ID display: show first 6 chars of UUID in table views,
-      accept prefix match for commands
+- [x] `packages/cli/src/index.ts` — entry point, arg parser
+      (uses `commander`)
+- [x] Config loading: reuse `packages/shared` config module
+      (`context.ts` wraps `loadConfig` + `validateConfig` + `createDb`)
+- [x] Output formatting helpers: table renderer, color/dim for
+      terminal, `--json` flag support (`format.ts` with `picocolors`)
+- [x] Short ID display: show first 6 chars of UUID in table views,
+      accept prefix match for commands (`findMemoryByIdPrefix` in shared)
 
 ### Commands
 
-- [ ] `moneta search <question>` — semantic search with tabular output
-  - [ ] Flags: `--limit`, `--threshold`, `--agent`, `--engineer`,
+- [x] `moneta search <question>` — semantic search with tabular output
+  - [x] Flags: `--limit`, `--threshold`, `--agent`, `--engineer`,
         `--repo`, `--tags`, `--archived`, `--json`
-  - [ ] Output matches SPEC section 7.2 mockup
-- [ ] `moneta list` — chronological list with filters
-  - [ ] Flags: `--recent`, `--agent`, `--engineer`, `--repo`,
+  - [x] Output matches SPEC section 7.2 mockup
+- [x] `moneta list` — chronological list with filters
+  - [x] Flags: `--recent`, `--agent`, `--engineer`, `--repo`,
         `--tags`, `--pinned`, `--archived`, `--stale`, `--json`
-  - [ ] Footer shows total counts
-- [ ] `moneta show <id>` — full detail view of a single memory
-  - [ ] Accept full UUID or short prefix
-  - [ ] Output matches SPEC section 7.2 mockup
-- [ ] `moneta stats` — aggregate dashboard
-  - [ ] Total/active/archived/pinned counts
-  - [ ] Breakdown by engineer, repo, top tags
-  - [ ] Archival metrics (approaching stale, recently archived,
-        promoted)
-  - [ ] Access patterns (searches today, created today, most
-        accessed)
+  - [x] Footer shows total counts
+- [x] `moneta show <id>` — full detail view of a single memory
+  - [x] Accept full UUID or short prefix
+  - [x] Output matches SPEC section 7.2 mockup
+- [x] `moneta stats` — aggregate dashboard
+  - [x] Total/active/archived/pinned counts
+  - [x] Breakdown by engineer, repo, top tags
+  - [x] Archival metrics (approaching stale, recently archived,
+        promoted — shows "—" for untrackable metrics)
+  - [x] Access patterns (searches today — shows "—", created today,
+        most accessed)
 
 ---
 

@@ -10,8 +10,10 @@ export {
   callTouchMemories,
   createDb,
   deleteMemory,
+  findMemoryByIdPrefix,
   getMemoryById,
   insertMemory,
+  listMemories,
   updateMemory,
 } from "./db.ts"
 // Embeddings
@@ -25,6 +27,7 @@ export type {
   Database,
   DedupMatch,
   Importance,
+  ListMemoriesParams,
   MemoryRow,
   MemoryUpdate,
   MonetaDb,
