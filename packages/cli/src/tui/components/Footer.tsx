@@ -37,6 +37,7 @@ function getHints(mode: Mode, overlay: Overlay, inputFocused: boolean): string {
   if (overlay === "confirm") return "[y] Confirm  [n/Esc] Cancel"
   if (overlay === "filters") return "[Enter] Apply  [Esc] Cancel  [Tab] Next field"
   if (overlay === "tags") return "[Enter] Add tag  [Backspace] Remove  [Esc] Close"
+  if (overlay === "add") return "[Tab] Next field  [Enter] Submit  [Esc] Cancel"
 
   if (mode === "stats") return "[Tab] Back  [?] Help  [q] Quit"
 
@@ -44,7 +45,7 @@ function getHints(mode: Mode, overlay: Overlay, inputFocused: boolean): string {
     ? "[Enter] Recall  [Esc] Navigate"
     : "[/] Recall  [j/k] Navigate  [Enter] Detail"
 
-  const actions = "[p] Pin  [a] Archive  [d] Delete  [t] Tags"
+  const actions = "[p] Pin  [a] Archive  [d] Delete  [t] Tags  [n] New"
   const modes = "[Tab] Mode  [Ctrl+S] Stats  [?] Help  [q] Quit"
 
   return `${nav}  ${actions}  ${modes}`

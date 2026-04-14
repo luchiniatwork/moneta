@@ -29,11 +29,12 @@ export function HelpOverlay(): React.JSX.Element {
       <Binding keys="Ctrl+S" action="Stats dashboard" />
       <Text> </Text>
 
-      <Text bold>Actions (on selected memory)</Text>
-      <Binding keys="p" action="Pin / unpin" />
-      <Binding keys="a" action="Archive / restore" />
-      <Binding keys="d" action="Delete (with confirmation)" />
-      <Binding keys="t" action="Edit tags" />
+      <Text bold>Actions</Text>
+      <Binding keys="p" action="Pin / unpin (selected memory)" />
+      <Binding keys="a" action="Archive / restore (selected memory)" />
+      <Binding keys="d" action="Delete with confirmation (selected memory)" />
+      <Binding keys="t" action="Edit tags (selected memory)" />
+      <Binding keys="n" action="Create a new memory" />
       <Text> </Text>
 
       <Text bold>List Mode</Text>

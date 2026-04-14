@@ -8,7 +8,7 @@ import type { Importance } from "@moneta/shared"
 export type Mode = "recall" | "list" | "stats"
 
 /** Active overlay (rendered on top of the current mode). */
-export type Overlay = "none" | "help" | "confirm" | "filters" | "tags"
+export type Overlay = "none" | "help" | "confirm" | "filters" | "tags" | "add"
 
 // ---------------------------------------------------------------------------
 // Unified memory item

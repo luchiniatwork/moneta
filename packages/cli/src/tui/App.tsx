@@ -1,5 +1,6 @@
 import { Box, Text, useApp, useInput, useStdout } from "ink"
 import { useCallback, useState } from "react"
+import { AddMemory } from "./components/AddMemory.tsx"
 import { ConfirmDialog } from "./components/ConfirmDialog.tsx"
 import { DetailPanel } from "./components/DetailPanel.tsx"
 import { FilterPanel } from "./components/FilterPanel.tsx"
@@ -112,6 +113,15 @@ export function App(): React.JSX.Element {
       await refreshAfterAction()
     },
     [selectedItem, actions, refreshAfterAction],
+  )
+
+  const handleRemember = useCallback(
+    async (params: Parameters<typeof actions.remember>[0]) => {
+      await actions.remember(params)
+      setOverlay("none")
+      await refreshAfterAction()
+    },
+    [actions, refreshAfterAction],
   )
 
   // ---------------------------------------------------------------------------
@@ -252,6 +262,10 @@ export function App(): React.JSX.Element {
         setOverlay("tags")
         return
       }
+      if (input === "n") {
+        setOverlay("add")
+        return
+      }
 
       // List-mode-only keys
       if (mode === "list") {
@@ -356,6 +370,17 @@ export function App(): React.JSX.Element {
             <TagEditor
               currentTags={selectedItem.tags}
               onSave={handleTagsSave}
+              onCancel={() => setOverlay("none")}
+            />
+          </Box>
+        )}
+
+        {overlay === "add" && (
+          <Box position="absolute" marginTop={3} marginLeft={2}>
+            <AddMemory
+              onSubmit={(params) => {
+                void handleRemember(params)
+              }}
               onCancel={() => setOverlay("none")}
             />
           </Box>

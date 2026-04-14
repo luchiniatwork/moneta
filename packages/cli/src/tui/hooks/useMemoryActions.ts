@@ -1,10 +1,26 @@
-import { deleteMemory, embed, updateMemory } from "@moneta/shared"
+import type { Importance } from "@moneta/shared"
+import {
+  callDedupCheck,
+  deleteMemory,
+  embed,
+  insertMemory,
+  parseAgentId,
+  updateMemory,
+} from "@moneta/shared"
 import { useCallback, useState } from "react"
 import { useTuiContext } from "../context.tsx"
 
 // ---------------------------------------------------------------------------
 // useMemoryActions — mutations on individual memories
 // ---------------------------------------------------------------------------
+
+/** Parameters for creating a new memory via the TUI. */
+export interface RememberParams {
+  content: string
+  tags?: string[]
+  repo?: string
+  importance?: Importance
+}
 
 interface UseMemoryActionsReturn {
   /** Toggle pin state on a memory. */
@@ -17,6 +33,8 @@ interface UseMemoryActionsReturn {
   updateTags: (id: string, tags: string[]) => Promise<void>
   /** Update content on a memory (re-embeds). */
   correct: (id: string, newContent: string) => Promise<void>
+  /** Create a new memory (embeds, dedup-checks, and inserts). */
+  remember: (params: RememberParams) => Promise<void>
   /** Whether a mutation is in progress. */
   busy: boolean
   /** Last error from a mutation (cleared on next action). */
@@ -102,5 +120,69 @@ export function useMemoryActions(): UseMemoryActionsReturn {
     [config, db, run],
   )
 
-  return { togglePin, toggleArchive, forget, updateTags, correct, busy, error }
+  const remember = useCallback(
+    async (params: RememberParams) => {
+      await run(async () => {
+        const agentIdRaw = config.agentId
+        if (!agentIdRaw) {
+          throw new Error(
+            "Agent identity required. Set MONETA_AGENT_ID or configure agent_id in moneta.json.",
+          )
+        }
+
+        const trimmed = params.content.trim()
+        if (trimmed.length === 0) {
+          throw new Error("Content must not be empty.")
+        }
+        if (trimmed.length > config.maxContentLength) {
+          throw new Error(
+            `Content exceeds maximum length of ${config.maxContentLength} characters.`,
+          )
+        }
+
+        const identity = parseAgentId(agentIdRaw)
+        const importance = params.importance ?? "normal"
+        const embedding = await embed(trimmed, config.openaiApiKey, config.embeddingModel)
+
+        const duplicates = await callDedupCheck(db, {
+          projectId: config.projectId,
+          embedding,
+          threshold: config.dedupThreshold,
+        })
+
+        const firstDupe = duplicates[0]
+
+        if (firstDupe && firstDupe.createdBy === identity.createdBy) {
+          await updateMemory(db, firstDupe.id, {
+            content: trimmed,
+            newEmbedding: embedding,
+            tags: params.tags,
+            repo: params.repo,
+            importance,
+          })
+          return
+        }
+
+        const effectiveTags = firstDupe
+          ? [...(params.tags ?? []), "corroborated"]
+          : (params.tags ?? undefined)
+
+        await insertMemory(db, {
+          project_id: config.projectId,
+          content: trimmed,
+          embedding,
+          created_by: identity.createdBy,
+          engineer: identity.engineer,
+          agent_type: identity.agentType,
+          repo: params.repo ?? null,
+          tags: effectiveTags,
+          importance,
+          pinned: importance === "critical",
+        })
+      })
+    },
+    [config, db, run],
+  )
+
+  return { togglePin, toggleArchive, forget, updateTags, correct, remember, busy, error }
 }
