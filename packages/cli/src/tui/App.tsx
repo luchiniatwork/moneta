@@ -42,10 +42,10 @@ export function App(): React.JSX.Element {
   const listHeight = termHeight - 4 // header + recall/filter bar + footer + padding
 
   // Mode & overlay state
-  const [mode, setMode] = useState<Mode>("recall")
+  const [mode, setMode] = useState<Mode>("list")
   const [overlay, setOverlay] = useState<Overlay>("none")
   const [showDetail, setShowDetail] = useState(false)
-  const [inputFocused, setInputFocused] = useState(true)
+  const [inputFocused, setInputFocused] = useState(false)
 
   // Confirm dialog state
   const [confirmMessage, setConfirmMessage] = useState("")
@@ -230,8 +230,9 @@ export function App(): React.JSX.Element {
       // Stats mode only handles the keys above
       if (mode === "stats") return
 
-      // Recall bar focus
+      // Recall bar focus — also switch to recall mode so the bar is visible
       if (input === "/") {
+        setMode("recall")
         setInputFocused(true)
         return
       }
@@ -347,7 +348,9 @@ export function App(): React.JSX.Element {
                 <Text bold>Memories</Text>
                 <Text dimColor>
                   {" "}
-                  (sorted by {list.sortBy === "created_at" ? "date" : "last accessed"})
+                  (sorted by {list.sortBy === "created_at" ? "date" : "last accessed"}
+                  {list.filters.archived ? ", showing archived" : ""}
+                  {list.filters.pinned ? ", showing pinned" : ""})
                 </Text>
                 {list.loading && <Text dimColor> loading...</Text>}
               </Box>
@@ -355,12 +358,13 @@ export function App(): React.JSX.Element {
 
             {/* Memory list + detail panel */}
             <Box flexGrow={1}>
-              <Box flexGrow={1}>
+              <Box flexGrow={1} overflow="hidden">
                 <MemoryList
                   items={activeItems}
                   selectedIndex={activeIndex}
                   showSimilarity={mode === "recall"}
                   height={listHeight}
+                  width={showDetail ? termWidth - detailWidth : termWidth}
                 />
               </Box>
               {showDetail && selectedItem && (

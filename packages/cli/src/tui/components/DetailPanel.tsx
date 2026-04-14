@@ -18,23 +18,16 @@ interface DetailPanelProps {
  * pin/archive status, access stats, and timestamps.
  */
 export function DetailPanel({ item, width }: DetailPanelProps): React.JSX.Element {
-  const contentWidth = Math.max(10, width - 4) // Padding
+  // Subtract padding (2 left + 1 right) and label width (12)
+  const contentWidth = Math.max(10, width - 3 - 12)
+  const hits = `${item.accessCount} ${item.accessCount === 1 ? "time" : "times"}`
 
   return (
-    <Box
-      flexDirection="column"
-      width={width}
-      borderStyle="single"
-      borderLeft={true}
-      borderRight={false}
-      borderTop={false}
-      borderBottom={false}
-      paddingX={1}
-    >
+    <Box flexDirection="column" width={width} paddingLeft={2} paddingRight={1}>
       <Text bold>Detail</Text>
       <Text> </Text>
 
-      <Field label="Content" value={wrapText(item.content, contentWidth - 12)} />
+      <Field label="Content" value={wrapText(item.content, contentWidth)} />
       <Text> </Text>
 
       <Field label="Created by" value={item.createdBy} />
@@ -48,7 +41,7 @@ export function DetailPanel({ item, width }: DetailPanelProps): React.JSX.Elemen
       <Text> </Text>
 
       <Field label="ID" value={shortId(item.id)} />
-      <Field label="Hits" value={String(item.accessCount)} />
+      <Field label="Hits" value={hits} />
       <Field label="Created" value={relativeTime(item.createdAt)} />
       <Field label="Updated" value={relativeTime(item.updatedAt)} />
       <Field label="Accessed" value={relativeTime(item.lastAccessedAt)} />

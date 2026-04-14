@@ -13,6 +13,8 @@ interface MemoryListProps {
   showSimilarity: boolean
   /** Available height for the list (in terminal rows). */
   height: number
+  /** Available width for the list (in terminal columns). */
+  width: number
 }
 
 /**
@@ -27,6 +29,7 @@ export function MemoryList({
   selectedIndex,
   showSimilarity,
   height,
+  width,
 }: MemoryListProps): React.JSX.Element {
   if (items.length === 0) {
     return (
@@ -63,6 +66,7 @@ export function MemoryList({
             item={item}
             isSelected={isSelected}
             showSimilarity={showSimilarity}
+            width={width}
           />
         )
       })}
@@ -84,35 +88,39 @@ interface MemoryRowProps {
   item: MemoryItem
   isSelected: boolean
   showSimilarity: boolean
+  width: number
 }
 
-function MemoryRow({ item, isSelected, showSimilarity }: MemoryRowProps): React.JSX.Element {
+function MemoryRow({ item, isSelected, showSimilarity, width }: MemoryRowProps): React.JSX.Element {
   const pin = item.pinned ? "*" : " "
-  const contentWidth = 50
+  // Available chars inside paddingX={1}: width - 2
+  const rowWidth = Math.max(20, width - 2)
+
+  // Build the prefix: "> " or "  ", then id/score, then pin
+  const indicator = isSelected ? "> " : "  "
+  const idOrScore = showSimilarity
+    ? `${(item.similarity ?? 0).toFixed(2)} `
+    : `${shortId(item.id)} `
+  const prefix = `${indicator}${idOrScore}${pin} `
+
+  // Build the suffix: agent, tags/time
+  const agent = item.createdBy.padEnd(16)
+  const meta = showSimilarity
+    ? relativeTime(item.lastAccessedAt)
+    : `${formatTags(item.tags).padEnd(12)}  ${age(item.createdAt)}`
+  const suffix = `  ${agent}  ${meta}`
+
+  // Content gets whatever space remains
+  const contentWidth = Math.max(8, rowWidth - prefix.length - suffix.length)
+  const content = truncate(item.content, contentWidth).padEnd(contentWidth)
+
+  const line = `${prefix}${content}${suffix}`
+  // Final safety truncation to fit the row
+  const display = line.length > rowWidth ? line.slice(0, rowWidth) : line.padEnd(rowWidth)
 
   return (
-    <Box paddingX={1}>
-      <Text
-        backgroundColor={isSelected ? "blue" : undefined}
-        color={isSelected ? "white" : undefined}
-      >
-        {isSelected ? ">" : " "}{" "}
-        {showSimilarity ? (
-          <Text>{(item.similarity ?? 0).toFixed(2)} </Text>
-        ) : (
-          <Text dimColor>{shortId(item.id)} </Text>
-        )}
-        <Text color="yellow">{pin}</Text>{" "}
-        {truncate(item.content, contentWidth).padEnd(contentWidth)}
-        {"  "}
-        <Text dimColor>
-          {item.createdBy.padEnd(20)}
-          {"  "}
-          {showSimilarity
-            ? relativeTime(item.lastAccessedAt)
-            : `${formatTags(item.tags).padEnd(16)}  ${age(item.createdAt)}`}
-        </Text>
-      </Text>
+    <Box>
+      <Text inverse={isSelected}> {display} </Text>
     </Box>
   )
 }
