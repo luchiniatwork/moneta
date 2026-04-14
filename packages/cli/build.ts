@@ -42,6 +42,7 @@ const result = await Bun.build({
   outdir: OUT_DIR,
   target: "node",
   format: "esm",
+  minify: true,
   external: EXTERNAL,
 })
 
