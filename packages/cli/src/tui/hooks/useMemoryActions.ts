@@ -23,18 +23,18 @@ export interface RememberParams {
 }
 
 interface UseMemoryActionsReturn {
-  /** Toggle pin state on a memory. */
-  togglePin: (id: string, currentlyPinned: boolean) => Promise<void>
-  /** Toggle archived state on a memory. */
-  toggleArchive: (id: string, currentlyArchived: boolean) => Promise<void>
-  /** Permanently delete a memory. */
-  forget: (id: string) => Promise<void>
-  /** Update tags on a memory. */
-  updateTags: (id: string, tags: string[]) => Promise<void>
-  /** Update content on a memory (re-embeds). */
-  correct: (id: string, newContent: string) => Promise<void>
-  /** Create a new memory (embeds, dedup-checks, and inserts). */
-  remember: (params: RememberParams) => Promise<void>
+  /** Toggle pin state on a memory. Returns `true` on success. */
+  togglePin: (id: string, currentlyPinned: boolean) => Promise<boolean>
+  /** Toggle archived state on a memory. Returns `true` on success. */
+  toggleArchive: (id: string, currentlyArchived: boolean) => Promise<boolean>
+  /** Permanently delete a memory. Returns `true` on success. */
+  forget: (id: string) => Promise<boolean>
+  /** Update tags on a memory. Returns `true` on success. */
+  updateTags: (id: string, tags: string[]) => Promise<boolean>
+  /** Update content on a memory (re-embeds). Returns `true` on success. */
+  correct: (id: string, newContent: string) => Promise<boolean>
+  /** Create a new memory (embeds, dedup-checks, and inserts). Returns `true` on success. */
+  remember: (params: RememberParams) => Promise<boolean>
   /** Whether a mutation is in progress. */
   busy: boolean
   /** Last error from a mutation (cleared on next action). */
@@ -54,21 +54,23 @@ export function useMemoryActions(): UseMemoryActionsReturn {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const run = useCallback(async (fn: () => Promise<void>) => {
+  const run = useCallback(async (fn: () => Promise<void>): Promise<boolean> => {
     setBusy(true)
     setError(null)
     try {
       await fn()
+      return true
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
+      return false
     } finally {
       setBusy(false)
     }
   }, [])
 
   const togglePin = useCallback(
-    async (id: string, currentlyPinned: boolean) => {
-      await run(async () => {
+    async (id: string, currentlyPinned: boolean): Promise<boolean> => {
+      return run(async () => {
         await updateMemory(db, id, { pinned: !currentlyPinned, updated_at: new Date() })
       })
     },
@@ -76,8 +78,8 @@ export function useMemoryActions(): UseMemoryActionsReturn {
   )
 
   const toggleArchive = useCallback(
-    async (id: string, currentlyArchived: boolean) => {
-      await run(async () => {
+    async (id: string, currentlyArchived: boolean): Promise<boolean> => {
+      return run(async () => {
         await updateMemory(db, id, {
           archived: !currentlyArchived,
           updated_at: new Date(),
@@ -89,8 +91,8 @@ export function useMemoryActions(): UseMemoryActionsReturn {
   )
 
   const forget = useCallback(
-    async (id: string) => {
-      await run(async () => {
+    async (id: string): Promise<boolean> => {
+      return run(async () => {
         await deleteMemory(db, id)
       })
     },
@@ -98,8 +100,8 @@ export function useMemoryActions(): UseMemoryActionsReturn {
   )
 
   const updateTags = useCallback(
-    async (id: string, tags: string[]) => {
-      await run(async () => {
+    async (id: string, tags: string[]): Promise<boolean> => {
+      return run(async () => {
         await updateMemory(db, id, { tags, updated_at: new Date() })
       })
     },
@@ -107,8 +109,8 @@ export function useMemoryActions(): UseMemoryActionsReturn {
   )
 
   const correct = useCallback(
-    async (id: string, newContent: string) => {
-      await run(async () => {
+    async (id: string, newContent: string): Promise<boolean> => {
+      return run(async () => {
         const embedding = await embed(newContent, config.openaiApiKey, config.embeddingModel)
         await updateMemory(db, id, {
           content: newContent,
@@ -121,8 +123,8 @@ export function useMemoryActions(): UseMemoryActionsReturn {
   )
 
   const remember = useCallback(
-    async (params: RememberParams) => {
-      await run(async () => {
+    async (params: RememberParams): Promise<boolean> => {
+      return run(async () => {
         const agentIdRaw = config.agentId
         if (!agentIdRaw) {
           throw new Error(

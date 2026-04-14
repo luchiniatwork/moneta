@@ -50,6 +50,7 @@ export function App(): React.JSX.Element {
   // Confirm dialog state
   const [confirmMessage, setConfirmMessage] = useState("")
   const [confirmCallback, setConfirmCallback] = useState<(() => void) | null>(null)
+  const [statusMessage, setStatusMessage] = useState<string | null>(null)
 
   // Data hooks
   const { counts, refresh: refreshCounts } = useCounts()
@@ -73,22 +74,37 @@ export function App(): React.JSX.Element {
 
   const refreshAfterAction = useCallback(async () => {
     await refreshCounts()
-    if (mode === "list") {
-      await list.refresh()
-    }
-  }, [mode, refreshCounts, list.refresh])
+    await list.refresh()
+  }, [refreshCounts, list.refresh])
 
-  const handlePin = useCallback(async () => {
+  const handlePin = useCallback(() => {
     if (!selectedItem) return
-    await actions.togglePin(selectedItem.id, selectedItem.pinned)
-    await refreshAfterAction()
+    const label = selectedItem.pinned ? "Unpin" : "Pin"
+    setConfirmMessage(`${label} memory ${selectedItem.id.slice(0, 6)}?`)
+    setConfirmCallback(() => async () => {
+      await actions.togglePin(selectedItem.id, selectedItem.pinned)
+      await refreshAfterAction()
+    })
+    setOverlay("confirm")
   }, [selectedItem, actions, refreshAfterAction])
 
-  const handleArchive = useCallback(async () => {
+  const handleArchive = useCallback(() => {
     if (!selectedItem) return
-    await actions.toggleArchive(selectedItem.id, selectedItem.archived)
-    await refreshAfterAction()
-  }, [selectedItem, actions, refreshAfterAction])
+    const label = selectedItem.archived ? "Unarchive" : "Archive"
+    setConfirmMessage(`${label} memory ${selectedItem.id.slice(0, 6)}?`)
+    setConfirmCallback(() => async () => {
+      await actions.toggleArchive(selectedItem.id, selectedItem.archived)
+      // Archiving removes the item from the default (active-only) view
+      if (!selectedItem.archived) {
+        const newLen = activeItems.length - 1
+        if (activeIndex >= newLen && newLen > 0) {
+          setActiveIndex(newLen - 1)
+        }
+      }
+      await refreshAfterAction()
+    })
+    setOverlay("confirm")
+  }, [selectedItem, actions, activeItems.length, activeIndex, setActiveIndex, refreshAfterAction])
 
   const handleDelete = useCallback(() => {
     if (!selectedItem) return
@@ -117,8 +133,11 @@ export function App(): React.JSX.Element {
 
   const handleRemember = useCallback(
     async (params: Parameters<typeof actions.remember>[0]) => {
-      await actions.remember(params)
+      const ok = await actions.remember(params)
+      if (!ok) return // keep overlay open so the user sees the error and can retry
       setOverlay("none")
+      setStatusMessage("Memory saved")
+      setTimeout(() => setStatusMessage(null), 3_000)
       await refreshAfterAction()
     },
     [actions, refreshAfterAction],
@@ -247,11 +266,11 @@ export function App(): React.JSX.Element {
 
       // Actions on selected memory
       if (input === "p") {
-        void handlePin()
+        handlePin()
         return
       }
       if (input === "a") {
-        void handleArchive()
+        handleArchive()
         return
       }
       if (input === "d") {
@@ -379,7 +398,9 @@ export function App(): React.JSX.Element {
           <Box position="absolute" marginTop={3} marginLeft={2}>
             <AddMemory
               onSubmit={(params) => {
-                void handleRemember(params)
+                handleRemember(params).catch(() => {
+                  // Errors are surfaced via actions.error state
+                })
               }}
               onCancel={() => setOverlay("none")}
             />
@@ -393,7 +414,12 @@ export function App(): React.JSX.Element {
         )}
       </Box>
 
-      {/* Error bar */}
+      {/* Status / error bar */}
+      {statusMessage && (
+        <Box paddingX={1}>
+          <Text color="green">{statusMessage}</Text>
+        </Box>
+      )}
       {errorMessage && (
         <Box paddingX={1}>
           <Text color="red">Error: {errorMessage}</Text>
