@@ -1,24 +1,49 @@
 {
   "name": "@moneta/cli",
   "version": "0.0.1",
+  "description": "CLI for browsing and managing the Moneta shared memory store",
   "type": "module",
+  "license": "MIT",
   "bin": {
-    "moneta": "./src/index.ts"
+    "moneta": "./dist/index.js"
   },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "bun build.ts"
+  },
+  "keywords": [
+    "moneta",
+    "memory",
+    "ai",
+    "agent",
+    "mcp",
+    "cli"
+  ],
   "dependencies": {
-    "@moneta/shared": "workspace:*",
     "commander": "^13.1.0",
     "ink": "^5.2.1",
     "ink-spinner": "^5.0.0",
     "ink-text-input": "^6.0.0",
     "kysely": "^0.28.3",
+    "kysely-postgres-js": "^2.0.0",
+    "openai": "^4.86.0",
     "picocolors": "^1.1.1",
+    "postgres": "^3.4.7",
     "react": "^18.3.1"
   },
   "devDependencies": {
+    "@moneta/shared": "workspace:*",
     "@types/react": "^18.3.18"
   }
 }

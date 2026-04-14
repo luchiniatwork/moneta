@@ -1,4 +1,4 @@
-#!/usr/bin/env bun
+#!/usr/bin/env node
 import { Command } from "commander"
 import { handleArchive } from "./commands/archive.ts"
 import { handleCorrect } from "./commands/correct.ts"

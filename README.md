@@ -25,6 +25,7 @@
     <li><a href="#usage">Usage</a></li>
     <li><a href="#project-structure">Project Structure</a></li>
     <li><a href="#development">Development</a></li>
+    <li><a href="#publishing">Publishing</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
   </ol>
 </details>
@@ -69,12 +70,12 @@ project-scoped memory pool.
 │  └───────────┬───────────┘                                │
 │              │ PostgreSQL client                           │
 │              ▼                                            │
-│  ┌───────────────────────────────────────────┐            │
-│  │       PostgreSQL + pgvector               │            │
-│  │  project_memory table + HNSW index        │            │
-│  │  recall(), dedup_check(), archive_stale() │            │
-│  │  pg_cron: daily archive reaper            │            │
-│  └───────────────────────────────────────────┘            │
+│  ┌───────────────────────────────────────────────────────┐│
+│  │       PostgreSQL + pgvector                           ││
+│  │  project_memory table + HNSW index                    ││
+│  │  recall(), dedup_check(), archive_stale()             ││
+│  │  pg_cron: daily archive reaper                        ││
+│  └───────────────────────────────────────────────────────┘│
 │              ▲                                            │
 │  ┌───────────┴───────────┐                                │
 │  │    CLI / TUI          │  Human admin interface          │
@@ -119,6 +120,36 @@ embedding generation.
 
 ### Installation
 
+#### From npm (end users)
+
+Install the CLI globally:
+
+```sh
+npm install -g @moneta/cli
+```
+
+Or run directly with `npx` / `bunx`:
+
+```sh
+npx @moneta/cli recall "How does authentication work?"
+bunx @moneta/cli list --recent 10
+```
+
+Once installed globally, the command is simply `moneta`:
+
+```sh
+moneta recall "How does authentication work?"
+moneta list --recent 10
+```
+
+To set up the MCP server for your AI coding agent:
+
+```sh
+npx @moneta/mcp-server
+```
+
+#### From source (contributors)
+
 1. Clone the repo
    ```sh
    git clone https://github.com/your-org/moneta.git
@@ -128,11 +159,15 @@ embedding generation.
    ```sh
    bun install
    ```
-3. Start the local Supabase instance and apply migrations
+3. Build the packages
+   ```sh
+   bun run build
+   ```
+4. Start the local Supabase instance and apply migrations
    ```sh
    bun run db:start
    ```
-4. Set up environment variables (see [Configuration](#configuration) below)
+5. Set up environment variables (see [Configuration](#configuration) below)
 
 ### Configuration
 
@@ -189,6 +224,26 @@ The MCP server exposes six tools to AI coding agents via the
 | **forget**    | Permanently delete a memory.                                         |
 | **correct**   | Update a memory's content and re-generate its embedding.             |
 
+Configure your AI tool (e.g. Claude Desktop, Cursor, Windsurf) to use the MCP
+server:
+
+```json
+{
+  "mcpServers": {
+    "moneta": {
+      "command": "npx",
+      "args": ["@moneta/mcp-server"],
+      "env": {
+        "MONETA_PROJECT_ID": "my-project",
+        "MONETA_DATABASE_URL": "postgresql://...",
+        "MONETA_AGENT_ID": "alice/code-reviewer",
+        "OPENAI_API_KEY": "sk-..."
+      }
+    }
+  }
+}
+```
+
 See [SPEC.md, section 5](SPEC.md#5-mcp-server) for full parameter details and
 behavior.
 
@@ -199,7 +254,7 @@ memories.
 
 ```sh
 # Semantic search — same operation agents use
-moneta search "How does authentication work?"
+moneta recall "How does authentication work?"
 
 # List recent memories
 moneta list --recent 20
@@ -218,7 +273,7 @@ moneta stats
 
 # Bulk import/export
 moneta import seeds.jsonl --agent "admin/import"
-moneta export --active > backup.json
+moneta export --all > backup.json
 
 # Interactive terminal UI
 moneta tui
@@ -246,8 +301,17 @@ moneta/
 └── TODO.md                  # Phased build plan
 ```
 
+### npm packages
+
+| Package              | npm name             | Binary command       | Description                        |
+| -------------------- | -------------------- | -------------------- | ---------------------------------- |
+| `packages/cli`       | `@moneta/cli`        | `moneta`             | CLI/TUI for human management       |
+| `packages/mcp-server`| `@moneta/mcp-server` | `moneta-mcp-server`  | MCP server for AI coding agents    |
+| `packages/shared`    | —                    | —                    | Internal library, bundled at build  |
+
 Packages reference each other via `workspace:*` dependencies. The
-`@moneta/shared` package is the foundation used by both `mcp-server` and `cli`.
+`@moneta/shared` package is the foundation used by both `mcp-server` and `cli`
+and is bundled inline at build time (not published separately).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -255,6 +319,7 @@ Packages reference each other via `workspace:*` dependencies. The
 
 ```sh
 bun install              # install all dependencies
+bun run build            # build CLI and MCP server for distribution
 bun run typecheck        # type-check all packages
 bun run lint             # lint with Biome
 bun run lint:fix         # auto-fix lint issues
@@ -271,7 +336,64 @@ bun run db:stop          # stop local Supabase
 bun run db:reset         # reset database and re-run migrations
 ```
 
+### Build system
+
+Both `@moneta/cli` and `@moneta/mcp-server` are built using Bun's bundler.
+Each package has a `build.ts` script that:
+
+1. Bundles the package entry point with `@moneta/shared` inlined
+2. Externalizes all npm dependencies (installed at runtime by the end user)
+3. Outputs a single `dist/index.js` file with a `#!/usr/bin/env node` shebang
+
+```sh
+bun run build            # build all packages
+bun run build:cli        # build CLI only
+bun run build:mcp        # build MCP server only
+```
+
 See [AGENTS.md](AGENTS.md) for code style guidelines and conventions.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
+## Publishing
+
+Both `@moneta/cli` and `@moneta/mcp-server` are published to the npm registry
+under the `@moneta` scope. The `@moneta/shared` package is **not** published —
+it is bundled into each package at build time.
+
+### Prerequisites
+
+1. You must be a member of the `@moneta` npm organization.
+2. You must be logged in to npm:
+   ```sh
+   npm login
+   ```
+
+### Publish workflow
+
+1. Build the packages:
+   ```sh
+   bun run build
+   ```
+2. Verify what will be published (the `files` field restricts it to `dist/`
+   only):
+   ```sh
+   npm pack --dry-run -w packages/cli
+   npm pack --dry-run -w packages/mcp-server
+   ```
+3. Bump versions as needed:
+   ```sh
+   npm version patch -w packages/cli
+   npm version patch -w packages/mcp-server
+   ```
+4. Publish:
+   ```sh
+   npm publish -w packages/cli
+   npm publish -w packages/mcp-server
+   ```
+
+Both packages have `"publishConfig": { "access": "public" }` so they are
+published publicly by default.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 

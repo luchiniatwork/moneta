@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio"
 import { createDb, loadConfig, parseAgentId, validateConfig } from "@moneta/shared"
 import { createMonetaServer } from "./server.ts"

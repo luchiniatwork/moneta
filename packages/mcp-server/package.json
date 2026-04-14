@@ -1,13 +1,44 @@
 {
   "name": "@moneta/mcp-server",
   "version": "0.0.1",
+  "description": "MCP server for the Moneta shared memory store",
   "type": "module",
-  "exports": {
-    ".": "./src/index.ts"
+  "license": "MIT",
+  "bin": {
+    "moneta-mcp-server": "./dist/index.js"
   },
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "bun build.ts"
+  },
+  "keywords": [
+    "moneta",
+    "memory",
+    "ai",
+    "agent",
+    "mcp",
+    "model-context-protocol"
+  ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.11.0",
-    "@moneta/shared": "workspace:*",
+    "kysely": "^0.28.3",
+    "kysely-postgres-js": "^2.0.0",
+    "openai": "^4.86.0",
+    "postgres": "^3.4.7",
     "zod": "^3.25"
+  },
+  "devDependencies": {
+    "@moneta/shared": "workspace:*"
   }
 }
