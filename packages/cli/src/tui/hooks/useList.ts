@@ -1,7 +1,6 @@
-import { listMemories } from "@moneta/shared"
 import { useCallback, useEffect, useState } from "react"
 import { useTuiContext } from "../context.tsx"
-import { fromMemoryRow } from "../convert.ts"
+import { fromMemory } from "../convert.ts"
 import type { FilterState, MemoryItem } from "../types.ts"
 import { EMPTY_FILTERS } from "../types.ts"
 
@@ -33,7 +32,7 @@ interface UseListReturn {
  * @returns List state and actions
  */
 export function useList(): UseListReturn {
-  const { config, db } = useTuiContext()
+  const { client } = useTuiContext()
   const [memories, setMemories] = useState<MemoryItem[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -52,8 +51,7 @@ export function useList(): UseListReturn {
             .filter(Boolean)
         : undefined
 
-      const rows = await listMemories(db, {
-        projectId: config.projectId,
+      const { memories: rows } = await client.listMemories({
         limit: 100,
         agent: filters.agent || undefined,
         engineer: filters.engineer || undefined,
@@ -65,14 +63,14 @@ export function useList(): UseListReturn {
         orderDirection: "desc",
       })
 
-      setMemories(rows.map(fromMemoryRow))
+      setMemories(rows.map(fromMemory))
       setSelectedIndex(0)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setLoading(false)
     }
-  }, [config, db, filters, sortBy])
+  }, [client, filters, sortBy])
 
   useEffect(() => {
     void refresh()

@@ -32,13 +32,11 @@
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.11.0",
-    "kysely": "^0.28.3",
-    "kysely-postgres-js": "^2.0.0",
-    "openai": "^4.86.0",
-    "postgres": "^3.4.7",
+
     "zod": "^3.25"
   },
   "devDependencies": {
+    "@moneta/api-client": "workspace:*",
     "@moneta/shared": "workspace:*"
   }
 }

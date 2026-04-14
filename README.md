@@ -69,19 +69,25 @@ project-scoped memory pool.
 │  │    MCP Server         │  Tools: remember, recall,      │
 │  │    (TypeScript)       │  pin, unpin, forget, correct   │
 │  └───────────┬───────────┘                                │
-│              │ PostgreSQL client                           │
-│              ▼                                            │
-│  ┌───────────────────────────────────────────────────────┐│
-│  │       PostgreSQL + pgvector                           ││
-│  │  project_memory table + HNSW index                    ││
-│  │  recall(), dedup_check(), archive_stale()             ││
-│  │  pg_cron: daily archive reaper                        ││
-│  └───────────────────────────────────────────────────────┘│
-│              ▲                                            │
+│              │ HTTP (REST API)                             │
 │  ┌───────────┴───────────┐                                │
 │  │    CLI / TUI          │  Human admin interface          │
-│  │    (Direct DB access) │                                │
-│  └───────────────────────┘                                │
+│  │    (TypeScript)       │                                │
+│  └───────────┬───────────┘                                │
+│              │ HTTP (REST API)                             │
+│              ▼                                            │
+│  ┌───────────────────────────────────────────┐            │
+│  │    REST API Server (Hono)                 │            │
+│  │    Embeddings, dedup, business logic      │            │
+│  └───────────┬───────────────────────────────┘            │
+│              │ PostgreSQL client + OpenAI                  │
+│              ▼                                            │
+│  ┌───────────────────────────────────────────┐            │
+│  │       PostgreSQL + pgvector               │            │
+│  │  project_memory table + HNSW index        │            │
+│  │  recall(), dedup_check(), archive_stale() │            │
+│  │  pg_cron: daily archive reaper            │            │
+│  └───────────────────────────────────────────┘            │
 └──────────────────────────────────────────────────────────┘
 ```
 
@@ -92,6 +98,7 @@ project-scoped memory pool.
 - [TypeScript](https://www.typescriptlang.org/) — strict mode with
   `noUncheckedIndexedAccess`
 - [Bun](https://bun.sh/) — runtime, package manager, and test runner
+- [Hono](https://hono.dev/) — lightweight REST API framework
 - [PostgreSQL](https://www.postgresql.org/) +
   [pgvector](https://github.com/pgvector/pgvector) — storage and vector search
 - [Supabase](https://supabase.com/) — managed PostgreSQL hosting with pg_cron
@@ -177,18 +184,30 @@ Moneta reads configuration from environment variables, falling back to
 
 #### Environment variables
 
+**API Server** (requires database + OpenAI access):
+
 | Variable                     | Required | Description                                            |
 | ---------------------------- | -------- | ------------------------------------------------------ |
 | `MONETA_PROJECT_ID`          | yes      | Project identifier (e.g. `"acme-platform"`)            |
 | `MONETA_DATABASE_URL`        | yes      | PostgreSQL connection string                           |
 | `OPENAI_API_KEY`             | yes      | OpenAI API key for embeddings                          |
-| `MONETA_AGENT_ID`            | yes\*    | Agent identity (e.g. `"alice/code-reviewer"`)          |
+| `MONETA_API_PORT`            | no       | Port to listen on (default: `3000`)                    |
+| `MONETA_API_KEY`             | no       | If set, all requests require `Authorization: Bearer`   |
 | `MONETA_EMBEDDING_MODEL`     | no       | Embedding model (default: `text-embedding-3-small`)    |
 | `MONETA_ARCHIVE_AFTER_DAYS`  | no       | Days before archival (default: `30`)                   |
 | `MONETA_DEDUP_THRESHOLD`     | no       | Similarity threshold for dedup (default: `0.95`)       |
 | `MONETA_SEARCH_THRESHOLD`    | no       | Min similarity for search results (default: `0.30`)    |
 | `MONETA_SEARCH_LIMIT`        | no       | Default search result limit (default: `10`)            |
 | `MONETA_MAX_CONTENT_LENGTH`  | no       | Max characters per memory (default: `2000`)            |
+
+**Clients** (MCP server, CLI — connect to the REST API):
+
+| Variable                     | Required | Description                                            |
+| ---------------------------- | -------- | ------------------------------------------------------ |
+| `MONETA_PROJECT_ID`          | yes      | Project identifier (e.g. `"acme-platform"`)            |
+| `MONETA_API_URL`             | yes      | REST API base URL (e.g. `http://localhost:3000/api/v1`)|
+| `MONETA_API_KEY`             | no       | API key if the server requires authentication          |
+| `MONETA_AGENT_ID`            | yes\*    | Agent identity (e.g. `"alice/code-reviewer"`)          |
 
 \*`MONETA_AGENT_ID` is required for the MCP server, not the CLI.
 
@@ -250,7 +269,7 @@ behavior.
 
 ### CLI (human-facing)
 
-The `moneta` CLI connects directly to PostgreSQL for browsing and managing
+The `moneta` CLI connects to the REST API server for browsing and managing
 memories.
 
 ```sh
@@ -320,13 +339,17 @@ your agent's integration method.
 moneta/
 ├── packages/
 │   ├── shared/              # Core library (config, db, embeddings, identity, types)
-│   ├── mcp-server/          # MCP server exposing tools to agents
-│   └── cli/                 # CLI/TUI for human management
+│   ├── api-server/          # Hono REST API server (owns DB + embeddings)
+│   ├── api-client/          # Zero-dep HTTP client for the REST API
+│   ├── mcp-server/          # MCP server exposing tools to agents (via API)
+│   └── cli/                 # CLI/TUI for human management (via API)
 ├── agent-skills/            # Installable agent skills (via npx skills add)
 │   ├── moneta-memory-mcp/   # Skill: use Moneta via MCP tools
 │   └── moneta-memory-cli/   # Skill: use Moneta via CLI commands
 ├── supabase/
 │   └── migrations/          # PostgreSQL schema, indexes, functions, cron jobs
+├── Dockerfile               # Multi-stage build for the API server
+├── docker-compose.yml       # Local dev: API server + PostgreSQL
 ├── package.json             # Bun workspace root
 ├── tsconfig.json            # Shared TypeScript config (strict mode)
 ├── biome.json               # Linting and formatting
@@ -343,8 +366,10 @@ moneta/
 | `packages/shared`    | —                    | —                    | Internal library, bundled at build  |
 
 Packages reference each other via `workspace:*` dependencies. The
-`@moneta/shared` package is the foundation used by both `mcp-server` and `cli`
-and is bundled inline at build time (not published separately).
+`@moneta/shared` package provides database and embedding access, used only by
+`api-server`. The `@moneta/api-client` package provides an HTTP client used by
+`mcp-server` and `cli` to communicate with the REST API. Both workspace packages
+are bundled inline at build time (not published separately).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -363,7 +388,15 @@ bun test                                                # run all tests
 bun test packages/shared/src/__tests__/config.test.ts   # run a single test file
 bun test --grep "pattern"                               # run tests matching a pattern
 
-# Local database
+# API server (local development)
+bun run dev:api          # start API server with --watch
+
+# Docker
+bun run docker:build     # build the API server Docker image
+bun run docker:up        # start API server + PostgreSQL via docker compose
+bun run docker:down      # stop docker compose services
+
+# Local database (Supabase)
 bun run db:start         # start local Supabase
 bun run db:stop          # stop local Supabase
 bun run db:reset         # reset database and re-run migrations
@@ -442,6 +475,8 @@ published publicly by default.
 - [ ] **Phase 6: TUI** — Interactive terminal interface
 - [ ] **Phase 7: Ops & Hardening** — Archival verification, monitoring,
   deployment docs
+- [x] **Phase 8: REST API Server** — Hono REST API, API client, MCP/CLI
+  refactor, Docker
 
 See [TODO.md](TODO.md) for the detailed build plan with task breakdowns.
 

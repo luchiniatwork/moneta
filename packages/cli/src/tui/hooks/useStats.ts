@@ -1,6 +1,5 @@
+import type { MemoryStats } from "@moneta/api-client"
 import { useCallback, useEffect, useState } from "react"
-import type { MemoryStats } from "../../commands/stats.ts"
-import { gatherStats } from "../../commands/stats.ts"
 import { useTuiContext } from "../context.tsx"
 
 // ---------------------------------------------------------------------------
@@ -23,7 +22,7 @@ interface UseStatsReturn {
  * @returns Stats data, loading state, and refresh callback
  */
 export function useStats(): UseStatsReturn {
-  const { config, db } = useTuiContext()
+  const { client } = useTuiContext()
   const [stats, setStats] = useState<MemoryStats | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -32,14 +31,14 @@ export function useStats(): UseStatsReturn {
     setLoading(true)
     setError(null)
     try {
-      const data = await gatherStats(db, config.projectId)
+      const data = await client.getStats()
       setStats(data)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
       setLoading(false)
     }
-  }, [config.projectId, db])
+  }, [client])
 
   useEffect(() => {
     void refresh()

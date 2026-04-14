@@ -1,4 +1,3 @@
-import { deleteMemory } from "@moneta/shared"
 import type { CliContext } from "../context.ts"
 import { pc, shortId, truncate } from "../format.ts"
 import { confirm } from "../prompt.ts"
@@ -25,7 +24,7 @@ export interface ForgetOptions {
  *
  * @param id - Full UUID or short prefix
  * @param options - CLI flag values
- * @param ctx - CLI context with config and database
+ * @param ctx - CLI context with config and API client
  */
 export async function handleForget(
   id: string,
@@ -48,6 +47,6 @@ export async function handleForget(
     }
   }
 
-  await deleteMemory(ctx.db, memory.id)
+  await ctx.client.deleteMemory(memory.id)
   console.log(`Deleted ${shortId(memory.id)}.`)
 }

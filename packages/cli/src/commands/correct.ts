@@ -1,4 +1,3 @@
-import { embed, updateMemory } from "@moneta/shared"
 import type { CliContext } from "../context.ts"
 import { pc, shortId } from "../format.ts"
 import { resolveMemory } from "../resolve.ts"
@@ -10,12 +9,12 @@ import { resolveMemory } from "../resolve.ts"
 /**
  * Execute the `moneta correct <id> <new-content>` command.
  *
- * Updates a memory's content and regenerates its embedding.
- * Shows old and new content for confirmation.
+ * Updates a memory's content via the API. The server handles
+ * regenerating the embedding.
  *
  * @param id - Full UUID or short prefix
  * @param newContent - The corrected fact
- * @param ctx - CLI context with config and database
+ * @param ctx - CLI context with config and API client
  */
 export async function handleCorrect(
   id: string,
@@ -35,16 +34,10 @@ export async function handleCorrect(
 
   const memory = await resolveMemory(id, ctx)
 
-  // Generate new embedding
-  const newEmbedding = await embed(newContent, ctx.config.openaiApiKey, ctx.config.embeddingModel)
-
-  // Update content and embedding
-  await updateMemory(ctx.db, memory.id, {
-    content: newContent,
-    newEmbedding,
-  })
+  // Correct via API (server re-embeds)
+  const result = await ctx.client.correct(memory.id, newContent)
 
   console.log(`Corrected ${shortId(memory.id)}.`)
-  console.log(`  ${pc.dim("Old:")} ${memory.content}`)
-  console.log(`  ${pc.dim("New:")} ${newContent}`)
+  console.log(`  ${pc.dim("Old:")} ${result.oldContent}`)
+  console.log(`  ${pc.dim("New:")} ${result.newContent}`)
 }

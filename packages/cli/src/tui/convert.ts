@@ -1,14 +1,16 @@
-import type { MemoryRow, RecallResult } from "@moneta/shared"
+import type { Memory, RecallResult } from "@moneta/api-client"
 import type { MemoryItem } from "./types.ts"
 
 // ---------------------------------------------------------------------------
-// Converters: RecallResult / MemoryRow → MemoryItem
+// Converters: RecallResult / Memory → MemoryItem
 // ---------------------------------------------------------------------------
 
 /**
  * Convert a semantic search result into a unified MemoryItem.
  *
- * @param r - Recall result from the database
+ * Parses ISO string dates from the API response into Date objects.
+ *
+ * @param r - Recall result from the API
  * @returns Normalized memory item with similarity score
  */
 export function fromRecallResult(r: RecallResult): MemoryItem {
@@ -25,34 +27,36 @@ export function fromRecallResult(r: RecallResult): MemoryItem {
     pinned: r.pinned,
     archived: r.archived,
     accessCount: r.accessCount,
-    createdAt: r.createdAt,
+    createdAt: new Date(r.createdAt),
     // RecallResult does not include updatedAt; fall back to createdAt
-    updatedAt: r.createdAt,
-    lastAccessedAt: r.lastAccessedAt,
+    updatedAt: new Date(r.createdAt),
+    lastAccessedAt: new Date(r.lastAccessedAt),
   }
 }
 
 /**
- * Convert a database row into a unified MemoryItem.
+ * Convert an API memory into a unified MemoryItem.
  *
- * @param r - Raw database row (snake_case fields)
+ * Parses ISO string dates from the API response into Date objects.
+ *
+ * @param m - Memory from the API (camelCase fields, dates as strings)
  * @returns Normalized memory item
  */
-export function fromMemoryRow(r: MemoryRow): MemoryItem {
+export function fromMemory(m: Memory): MemoryItem {
   return {
-    id: r.id,
-    content: r.content,
-    createdBy: r.created_by,
-    engineer: r.engineer,
-    agentType: r.agent_type,
-    repo: r.repo,
-    tags: r.tags,
-    importance: r.importance,
-    pinned: r.pinned,
-    archived: r.archived,
-    accessCount: r.access_count,
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
-    lastAccessedAt: r.last_accessed_at,
+    id: m.id,
+    content: m.content,
+    createdBy: m.createdBy,
+    engineer: m.engineer,
+    agentType: m.agentType,
+    repo: m.repo,
+    tags: m.tags,
+    importance: m.importance,
+    pinned: m.pinned,
+    archived: m.archived,
+    accessCount: m.accessCount,
+    createdAt: new Date(m.createdAt),
+    updatedAt: new Date(m.updatedAt),
+    lastAccessedAt: new Date(m.lastAccessedAt),
   }
 }

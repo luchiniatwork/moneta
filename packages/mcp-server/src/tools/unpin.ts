@@ -1,5 +1,4 @@
-import type { MonetaDb } from "@moneta/shared"
-import { getMemoryById, updateMemory } from "@moneta/shared"
+import type { MonetaClient } from "@moneta/api-client"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -12,7 +11,7 @@ export interface UnpinParams {
 
 /** Dependencies injected into the unpin handler. */
 export interface UnpinDeps {
-  db: MonetaDb
+  client: MonetaClient
 }
 
 /** Result returned from the unpin handler. */
@@ -28,25 +27,20 @@ export interface UnpinResult {
 /**
  * Remove the never-archive mark from a memory.
  *
- * Validates that the memory exists, then sets `pinned = false`.
- * This does NOT immediately archive the memory — it just makes
- * it eligible for the archival reaper.
+ * Delegates to the API client which validates the memory exists
+ * and sets `pinned = false`. This does NOT immediately archive the
+ * memory — it just makes it eligible for the archival reaper.
  *
- * @param deps - Injected dependencies (db)
+ * @param deps - Injected dependencies (client)
  * @param params - Tool parameters from the agent
  * @returns The unpinned memory ID and status
- * @throws Error if the memory is not found
+ * @throws Error if the memory is not found or the API request fails
  */
 export async function handleUnpin(deps: UnpinDeps, params: UnpinParams): Promise<UnpinResult> {
-  const { db } = deps
+  const { client } = deps
   const { memory_id: memoryId } = params
 
-  const existing = await getMemoryById(db, memoryId)
-  if (!existing) {
-    throw new Error(`Memory not found: ${memoryId}`)
-  }
-
-  await updateMemory(db, memoryId, { pinned: false })
+  await client.unpin(memoryId)
 
   return { id: memoryId, pinned: false }
 }

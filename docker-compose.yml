@@ -1,0 +1,34 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: moneta
+      POSTGRES_PASSWORD: moneta
+      POSTGRES_DB: moneta
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./supabase/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U moneta"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      MONETA_PROJECT_ID: ${MONETA_PROJECT_ID:-my-project}
+      MONETA_DATABASE_URL: postgresql://moneta:moneta@db:5432/moneta
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      MONETA_API_KEY: ${MONETA_API_KEY:-}
+      MONETA_API_PORT: "3000"
+
+volumes:
+  pgdata:

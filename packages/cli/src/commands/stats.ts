@@ -1,5 +1,4 @@
-import type { MonetaDb } from "@moneta/shared"
-import { sql } from "kysely"
+import type { MemoryStats } from "@moneta/api-client"
 import type { CliContext } from "../context.ts"
 import { pc, printJson, shortId, truncate } from "../format.ts"
 
@@ -12,19 +11,8 @@ export interface StatsOptions {
   json?: boolean
 }
 
-export interface MemoryStats {
-  total: number
-  active: number
-  archived: number
-  pinned: number
-  byEngineer: Array<{ engineer: string; count: number; pinned: number }>
-  byRepo: Array<{ repo: string; count: number }>
-  topTags: Array<{ tag: string; count: number }>
-  approachingStale: number
-  archivedLast7Days: number
-  createdToday: number
-  mostAccessed: Array<{ id: string; content: string; accessCount: number }>
-}
+// Re-export MemoryStats so the TUI hook can import from here if needed
+export type { MemoryStats }
 
 // ---------------------------------------------------------------------------
 // Handler
@@ -37,10 +25,10 @@ export interface MemoryStats {
  * breakdowns by engineer and repo, top tags, and archival metrics.
  *
  * @param options - CLI flag values
- * @param ctx - CLI context with config and database
+ * @param ctx - CLI context with config and API client
  */
 export async function handleStats(options: StatsOptions, ctx: CliContext): Promise<void> {
-  const stats = await gatherStats(ctx.db, ctx.config.projectId)
+  const stats = await ctx.client.getStats()
 
   if (options.json) {
     printJson(stats)
@@ -48,183 +36,6 @@ export async function handleStats(options: StatsOptions, ctx: CliContext): Promi
   }
 
   printStatsDashboard(stats, ctx.config.projectId)
-}
-
-// ---------------------------------------------------------------------------
-// Data gathering
-// ---------------------------------------------------------------------------
-
-/**
- * Gather aggregate memory statistics from the database.
- *
- * Runs multiple independent queries in parallel for efficiency.
- * Used by both the CLI `stats` command and the TUI stats dashboard.
- *
- * @param db - Kysely database instance
- * @param projectId - Project identifier
- * @returns Aggregate statistics
- */
-export async function gatherStats(db: MonetaDb, projectId: string): Promise<MemoryStats> {
-  // Run all independent queries in parallel
-  const [counts, byEngineer, byRepo, topTags, archivalMetrics, mostAccessed] = await Promise.all([
-    fetchCounts(db, projectId),
-    fetchByEngineer(db, projectId),
-    fetchByRepo(db, projectId),
-    fetchTopTags(db, projectId),
-    fetchArchivalMetrics(db, projectId),
-    fetchMostAccessed(db, projectId),
-  ])
-
-  return {
-    ...counts,
-    byEngineer,
-    byRepo,
-    topTags,
-    ...archivalMetrics,
-    mostAccessed,
-  }
-}
-
-async function fetchCounts(
-  db: MonetaDb,
-  projectId: string,
-): Promise<{ total: number; active: number; archived: number; pinned: number }> {
-  const result = await sql<{
-    total: string
-    active: string
-    archived: string
-    pinned: string
-  }>`
-    SELECT
-      COUNT(*)                                  AS total,
-      COUNT(*) FILTER (WHERE NOT archived)      AS active,
-      COUNT(*) FILTER (WHERE archived)          AS archived,
-      COUNT(*) FILTER (WHERE pinned)            AS pinned
-    FROM project_memory
-    WHERE project_id = ${projectId}
-  `.execute(db)
-
-  const row = result.rows[0]
-  return {
-    total: Number(row?.total ?? 0),
-    active: Number(row?.active ?? 0),
-    archived: Number(row?.archived ?? 0),
-    pinned: Number(row?.pinned ?? 0),
-  }
-}
-
-async function fetchByEngineer(
-  db: MonetaDb,
-  projectId: string,
-): Promise<Array<{ engineer: string; count: number; pinned: number }>> {
-  const result = await sql<{ engineer: string; count: string; pinned: string }>`
-    SELECT
-      COALESCE(engineer, 'auto') AS engineer,
-      COUNT(*)                   AS count,
-      COUNT(*) FILTER (WHERE pinned) AS pinned
-    FROM project_memory
-    WHERE project_id = ${projectId} AND NOT archived
-    GROUP BY COALESCE(engineer, 'auto')
-    ORDER BY count DESC
-  `.execute(db)
-
-  return result.rows.map((r) => ({
-    engineer: String(r.engineer),
-    count: Number(r.count),
-    pinned: Number(r.pinned),
-  }))
-}
-
-async function fetchByRepo(
-  db: MonetaDb,
-  projectId: string,
-): Promise<Array<{ repo: string; count: number }>> {
-  const result = await sql<{ repo: string; count: string }>`
-    SELECT
-      COALESCE(repo, '(no repo)') AS repo,
-      COUNT(*)                    AS count
-    FROM project_memory
-    WHERE project_id = ${projectId} AND NOT archived
-    GROUP BY COALESCE(repo, '(no repo)')
-    ORDER BY count DESC
-  `.execute(db)
-
-  return result.rows.map((r) => ({
-    repo: String(r.repo),
-    count: Number(r.count),
-  }))
-}
-
-async function fetchTopTags(
-  db: MonetaDb,
-  projectId: string,
-): Promise<Array<{ tag: string; count: number }>> {
-  const result = await sql<{ tag: string; count: string }>`
-    SELECT
-      unnest(tags) AS tag,
-      COUNT(*)     AS count
-    FROM project_memory
-    WHERE project_id = ${projectId} AND NOT archived
-    GROUP BY tag
-    ORDER BY count DESC
-    LIMIT 10
-  `.execute(db)
-
-  return result.rows.map((r) => ({
-    tag: String(r.tag),
-    count: Number(r.count),
-  }))
-}
-
-async function fetchArchivalMetrics(
-  db: MonetaDb,
-  projectId: string,
-): Promise<{ approachingStale: number; archivedLast7Days: number; createdToday: number }> {
-  const result = await sql<{
-    approaching_stale: string
-    archived_last_7_days: string
-    created_today: string
-  }>`
-    SELECT
-      COUNT(*) FILTER (
-        WHERE NOT pinned AND NOT archived
-          AND last_accessed_at < now() - INTERVAL '20 days'
-      ) AS approaching_stale,
-      COUNT(*) FILTER (
-        WHERE archived AND updated_at > now() - INTERVAL '7 days'
-      ) AS archived_last_7_days,
-      COUNT(*) FILTER (
-        WHERE created_at > date_trunc('day', now())
-      ) AS created_today
-    FROM project_memory
-    WHERE project_id = ${projectId}
-  `.execute(db)
-
-  const row = result.rows[0]
-  return {
-    approachingStale: Number(row?.approaching_stale ?? 0),
-    archivedLast7Days: Number(row?.archived_last_7_days ?? 0),
-    createdToday: Number(row?.created_today ?? 0),
-  }
-}
-
-async function fetchMostAccessed(
-  db: MonetaDb,
-  projectId: string,
-): Promise<Array<{ id: string; content: string; accessCount: number }>> {
-  const result = await sql<{ id: string; content: string; access_count: string }>`
-    SELECT id, content, access_count
-    FROM project_memory
-    WHERE project_id = ${projectId} AND NOT archived
-    ORDER BY access_count DESC
-    LIMIT 3
-  `.execute(db)
-
-  return result.rows.map((r) => ({
-    id: String(r.id),
-    content: String(r.content),
-    accessCount: Number(r.access_count),
-  }))
 }
 
 // ---------------------------------------------------------------------------

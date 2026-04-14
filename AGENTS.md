@@ -18,6 +18,14 @@ bun test                                                  # run all tests
 bun test packages/shared/src/__tests__/config.test.ts     # run a single test file
 bun test --grep "pattern"                                 # run tests matching a pattern
 
+# API server (local development)
+bun run dev:api            # start REST API server with --watch
+
+# Docker
+bun run docker:build       # build the API server Docker image
+bun run docker:up          # start API server + PostgreSQL via docker compose
+bun run docker:down        # stop docker compose services
+
 # Supabase (local database)
 bun run db:start           # start local supabase
 bun run db:stop            # stop local supabase
@@ -31,14 +39,17 @@ Always run `bun run typecheck` and `bun run lint` before considering work done.
 ```
 packages/
   shared/        # Core library: config, database, embeddings, identity, types
-  mcp-server/    # MCP server exposing tools (remember, recall, pin, forget, correct)
-  cli/           # CLI/TUI for human management of memories
+  api-server/    # Hono REST API server (owns DB + OpenAI, serves all clients)
+  api-client/    # Zero-dep HTTP client for the REST API
+  mcp-server/    # MCP server exposing tools (thin adapter over REST API)
+  cli/           # CLI/TUI for human management (via REST API)
 supabase/
   migrations/    # PostgreSQL migration files (pgvector, cron jobs)
 ```
 
 Packages reference each other via `workspace:*` dependencies and Bun workspaces.
-The `@moneta/shared` package is the foundation used by both `mcp-server` and `cli`.
+The `@moneta/shared` package is used only by `api-server`. The `@moneta/api-client`
+package provides the HTTP client used by `mcp-server` and `cli`.
 
 ## Code Style
 

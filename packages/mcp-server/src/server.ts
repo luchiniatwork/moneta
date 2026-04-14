@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp"
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types"
-import type { AgentIdentity, Config, MonetaDb } from "@moneta/shared"
+import type { MonetaClient } from "@moneta/api-client"
+import type { AgentIdentity, Config } from "@moneta/shared"
 import { z } from "zod"
 import type { CorrectParams } from "./tools/correct.ts"
 import { handleCorrect } from "./tools/correct.ts"
@@ -22,7 +23,7 @@ import { handleUnpin } from "./tools/unpin.ts"
 /** Dependencies required to create the Moneta MCP server. */
 export interface ServerDeps {
   config: Config
-  db: MonetaDb
+  client: MonetaClient
   identity: AgentIdentity
 }
 
@@ -32,7 +33,7 @@ export interface ServerDeps {
  * The returned server is not yet connected to a transport — the caller is
  * responsible for creating a transport and calling `server.connect(transport)`.
  *
- * @param deps - Config, database, and agent identity
+ * @param deps - Config, API client, and agent identity
  * @returns A configured McpServer instance
  */
 export function createMonetaServer(deps: ServerDeps): McpServer {
@@ -114,7 +115,7 @@ function logToolInvocation(entry: LogEntry): void {
 type ToolRegisterFn = (...args: any[]) => unknown
 
 function registerRememberTool(server: McpServer, deps: ServerDeps): void {
-  const { config, db, identity } = deps
+  const { config, client, identity } = deps
 
   const schema = {
     content: z
@@ -140,7 +141,7 @@ function registerRememberTool(server: McpServer, deps: ServerDeps): void {
       const start = Date.now()
       try {
         const args = rawArgs as unknown as RememberParams
-        const result = await handleRemember({ config, db, identity }, args)
+        const result = await handleRemember({ client }, args)
         const summary = result.deduplicated
           ? `Updated existing memory ${result.id} (near-duplicate detected).`
           : `Stored new memory ${result.id}.`
@@ -173,7 +174,7 @@ function registerRememberTool(server: McpServer, deps: ServerDeps): void {
 }
 
 function registerRecallTool(server: McpServer, deps: ServerDeps): void {
-  const { config, db, identity } = deps
+  const { config, client, identity } = deps
 
   const schema = {
     question: z.string().min(1).describe("Natural language question or topic to search for."),
@@ -210,7 +211,7 @@ function registerRecallTool(server: McpServer, deps: ServerDeps): void {
       const start = Date.now()
       try {
         const args = rawArgs as unknown as RecallParams
-        const results = await handleRecall({ config, db }, args)
+        const results = await handleRecall({ client, config }, args)
 
         logToolInvocation({
           timestamp: new Date().toISOString(),
@@ -244,7 +245,7 @@ function registerRecallTool(server: McpServer, deps: ServerDeps): void {
 }
 
 function registerPinTool(server: McpServer, deps: ServerDeps): void {
-  const { db, identity, config } = deps
+  const { client, identity, config } = deps
 
   const schema = {
     memory_id: z.string().uuid().describe("UUID of the memory to pin."),
@@ -259,7 +260,7 @@ function registerPinTool(server: McpServer, deps: ServerDeps): void {
       const start = Date.now()
       try {
         const args = rawArgs as unknown as PinParams
-        const result = await handlePin({ db }, args)
+        const result = await handlePin({ client }, args)
 
         logToolInvocation({
           timestamp: new Date().toISOString(),
@@ -289,7 +290,7 @@ function registerPinTool(server: McpServer, deps: ServerDeps): void {
 }
 
 function registerUnpinTool(server: McpServer, deps: ServerDeps): void {
-  const { db, identity, config } = deps
+  const { client, identity, config } = deps
 
   const schema = {
     memory_id: z.string().uuid().describe("UUID of the memory to unpin."),
@@ -304,7 +305,7 @@ function registerUnpinTool(server: McpServer, deps: ServerDeps): void {
       const start = Date.now()
       try {
         const args = rawArgs as unknown as UnpinParams
-        const result = await handleUnpin({ db }, args)
+        const result = await handleUnpin({ client }, args)
 
         logToolInvocation({
           timestamp: new Date().toISOString(),
@@ -334,7 +335,7 @@ function registerUnpinTool(server: McpServer, deps: ServerDeps): void {
 }
 
 function registerForgetTool(server: McpServer, deps: ServerDeps): void {
-  const { db, identity, config } = deps
+  const { client, identity, config } = deps
 
   const schema = {
     memory_id: z.string().uuid().describe("UUID of the memory to permanently delete."),
@@ -349,7 +350,7 @@ function registerForgetTool(server: McpServer, deps: ServerDeps): void {
       const start = Date.now()
       try {
         const args = rawArgs as unknown as ForgetParams
-        const result = await handleForget({ db }, args)
+        const result = await handleForget({ client }, args)
 
         logToolInvocation({
           timestamp: new Date().toISOString(),
@@ -379,7 +380,7 @@ function registerForgetTool(server: McpServer, deps: ServerDeps): void {
 }
 
 function registerCorrectTool(server: McpServer, deps: ServerDeps): void {
-  const { config, db, identity } = deps
+  const { config, client, identity } = deps
 
   const schema = {
     memory_id: z.string().uuid().describe("UUID of the memory to correct."),
@@ -400,7 +401,7 @@ function registerCorrectTool(server: McpServer, deps: ServerDeps): void {
       const start = Date.now()
       try {
         const args = rawArgs as unknown as CorrectParams
-        const result = await handleCorrect({ config, db }, args)
+        const result = await handleCorrect({ client }, args)
 
         logToolInvocation({
           timestamp: new Date().toISOString(),

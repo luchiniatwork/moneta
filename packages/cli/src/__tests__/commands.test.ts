@@ -1,74 +1,48 @@
 import { afterEach, beforeEach, describe, expect, it, mock } from "bun:test"
-import type { Config, MemoryRow, RecallResult } from "@moneta/shared"
+import type { Memory, MonetaClient, RecallResult } from "@moneta/api-client"
+import type { Config } from "@moneta/shared"
 import type { CliContext } from "../context.ts"
-
-// ---------------------------------------------------------------------------
-// Mocks
-// ---------------------------------------------------------------------------
-
-const FAKE_EMBEDDING = new Array(1536).fill(0.1)
-const FAKE_UUID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-const FAKE_UUID_2 = "b2c3d4e5-f6a7-8901-bcde-f12345678901"
-
-const mockEmbed = mock(() => Promise.resolve(FAKE_EMBEDDING))
-const mockCallRecall = mock(() => Promise.resolve([] as RecallResult[]))
-const mockCallTouchMemories = mock(() => Promise.resolve())
-const mockUpdateMemory = mock(() => Promise.resolve(fakeMemoryRow()))
-const mockGetMemoryById = mock((): Promise<MemoryRow | null> => Promise.resolve(fakeMemoryRow()))
-const mockFindMemoryByIdPrefix = mock(() => Promise.resolve([] as MemoryRow[]))
-const mockListMemories = mock(() => Promise.resolve([] as MemoryRow[]))
-
-mock.module("@moneta/shared", () => ({
-  embed: mockEmbed,
-  callRecall: mockCallRecall,
-  callTouchMemories: mockCallTouchMemories,
-  updateMemory: mockUpdateMemory,
-  getMemoryById: mockGetMemoryById,
-  findMemoryByIdPrefix: mockFindMemoryByIdPrefix,
-  listMemories: mockListMemories,
-}))
-
-// Import handlers after mocking
-const { handleRecall } = await import("../commands/recall.ts")
-const { handleShow } = await import("../commands/show.ts")
 
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
 
+const FAKE_UUID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+const FAKE_UUID_2 = "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+
 function fakeConfig(overrides?: Partial<Config>): Config {
   return {
     projectId: "test-project",
-    databaseUrl: "postgresql://localhost:5432/test",
-    openaiApiKey: "sk-test",
+    databaseUrl: "",
+    openaiApiKey: "",
     embeddingModel: "text-embedding-3-small",
     archiveAfterDays: 30,
     dedupThreshold: 0.95,
     searchThreshold: 0.3,
     searchLimit: 10,
     maxContentLength: 2000,
+    apiUrl: "http://localhost:3000/api/v1",
     ...overrides,
   }
 }
 
-function fakeMemoryRow(overrides?: Partial<MemoryRow>): MemoryRow {
+function fakeMemory(overrides?: Partial<Memory>): Memory {
   return {
     id: FAKE_UUID,
-    project_id: "test-project",
+    projectId: "test-project",
     content: "Auth service uses JWT with RS256",
-    embedding: null,
-    created_by: "alice/code-reviewer",
+    createdBy: "alice/code-reviewer",
     engineer: "alice",
-    agent_type: "code-reviewer",
+    agentType: "code-reviewer",
     repo: null,
     tags: [],
     importance: "normal",
     pinned: false,
     archived: false,
-    created_at: new Date("2026-04-08T14:30:00Z"),
-    updated_at: new Date("2026-04-08T14:30:00Z"),
-    last_accessed_at: new Date("2026-04-08T14:30:00Z"),
-    access_count: 0,
+    createdAt: "2026-04-08T14:30:00.000Z",
+    updatedAt: "2026-04-08T14:30:00.000Z",
+    lastAccessedAt: "2026-04-08T14:30:00.000Z",
+    accessCount: 0,
     ...overrides,
   }
 }
@@ -86,49 +60,76 @@ function fakeRecallResult(overrides?: Partial<RecallResult>): RecallResult {
     pinned: false,
     archived: false,
     accessCount: 3,
-    createdAt: new Date("2026-04-08T14:30:00Z"),
-    lastAccessedAt: new Date("2026-04-10T09:15:00Z"),
+    createdAt: "2026-04-08T14:30:00.000Z",
+    lastAccessedAt: "2026-04-10T09:15:00.000Z",
     ...overrides,
   }
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: mock db for testing
-const fakeDb = {} as any
+// ---------------------------------------------------------------------------
+// Mock client factory
+// ---------------------------------------------------------------------------
 
-function fakeContext(overrides?: Partial<Config>): CliContext {
+function createMockClient(overrides?: Partial<MonetaClient>): MonetaClient {
   return {
-    config: fakeConfig(overrides),
-    db: fakeDb,
+    remember: mock(() => Promise.resolve({ id: FAKE_UUID, content: "", deduplicated: false })),
+    recall: mock(() => Promise.resolve([] as RecallResult[])),
+    correct: mock(() => Promise.resolve({ id: FAKE_UUID, oldContent: "old", newContent: "new" })),
+    getMemory: mock(() => Promise.resolve(fakeMemory())),
+    listMemories: mock(() => Promise.resolve({ memories: [], total: 0 })),
+    deleteMemory: mock(() => Promise.resolve(true)),
+    pin: mock(() => Promise.resolve(fakeMemory({ pinned: true }))),
+    unpin: mock(() => Promise.resolve(fakeMemory({ pinned: false }))),
+    archive: mock(() => Promise.resolve(fakeMemory({ archived: true }))),
+    restore: mock(() => Promise.resolve(fakeMemory({ archived: false }))),
+    importMemories: mock(() => Promise.resolve({ imported: 0, skipped: 0 })),
+    exportMemories: mock(() => Promise.resolve([])),
+    getStats: mock(() =>
+      Promise.resolve({
+        total: 0,
+        active: 0,
+        archived: 0,
+        pinned: 0,
+        byEngineer: [],
+        byRepo: [],
+        topTags: [],
+        approachingStale: 0,
+        archivedLast7Days: 0,
+        createdToday: 0,
+        mostAccessed: [],
+      }),
+    ),
+    getCounts: mock(() => Promise.resolve({ active: 0, archived: 0, pinned: 0 })),
+    resolvePrefix: mock(() => Promise.resolve([] as Memory[])),
+    touchMemories: mock(() => Promise.resolve(0)),
+    archiveStale: mock(() => Promise.resolve(0)),
+    health: mock(() => Promise.resolve({ status: "ok" as const, project: "", version: "" })),
+    ...overrides,
   }
 }
+
+function _fakeContext(overrides?: Partial<Config>): CliContext {
+  return {
+    config: fakeConfig(overrides),
+    client: createMockClient(),
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Import handlers (no mocking needed — we inject the client directly)
+// ---------------------------------------------------------------------------
+
+const { handleRecall } = await import("../commands/recall.ts")
+const { handleShow } = await import("../commands/show.ts")
 
 // ---------------------------------------------------------------------------
 // Setup / Teardown
 // ---------------------------------------------------------------------------
 
-// Capture console.log output per test
 let logOutput: string[]
 const originalLog = console.log
 
 beforeEach(() => {
-  mockEmbed.mockClear()
-  mockCallRecall.mockClear()
-  mockCallTouchMemories.mockClear()
-  mockUpdateMemory.mockClear()
-  mockGetMemoryById.mockClear()
-  mockFindMemoryByIdPrefix.mockClear()
-  mockListMemories.mockClear()
-
-  // Reset default implementations
-  mockEmbed.mockImplementation(() => Promise.resolve(FAKE_EMBEDDING))
-  mockCallRecall.mockImplementation(() => Promise.resolve([]))
-  mockCallTouchMemories.mockImplementation(() => Promise.resolve())
-  mockUpdateMemory.mockImplementation(() => Promise.resolve(fakeMemoryRow()))
-  mockGetMemoryById.mockImplementation(() => Promise.resolve(fakeMemoryRow()))
-  mockFindMemoryByIdPrefix.mockImplementation(() => Promise.resolve([]))
-  mockListMemories.mockImplementation(() => Promise.resolve([]))
-
-  // Capture console.log output
   logOutput = []
   console.log = (...args: unknown[]) => {
     logOutput.push(args.map(String).join(" "))
@@ -144,39 +145,24 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("handleRecall", () => {
-  it("generates an embedding for the question", async () => {
-    const ctx = fakeContext()
+  it("calls client.recall with the question", async () => {
+    const client = createMockClient()
+    const ctx: CliContext = { config: fakeConfig(), client }
     await handleRecall("How does auth work?", {}, ctx)
 
-    expect(mockEmbed).toHaveBeenCalledTimes(1)
-    expect(mockEmbed).toHaveBeenCalledWith(
-      "How does auth work?",
-      "sk-test",
-      "text-embedding-3-small",
-    )
+    expect(client.recall).toHaveBeenCalledTimes(1)
+    const args = (client.recall as ReturnType<typeof mock>).mock.calls[0] as unknown[]
+    const params = args[0] as Record<string, unknown>
+    expect(params.question).toBe("How does auth work?")
   })
 
-  it("calls callRecall with the embedding and default config values", async () => {
-    const ctx = fakeContext()
-    await handleRecall("How does auth work?", {}, ctx)
-
-    expect(mockCallRecall).toHaveBeenCalledTimes(1)
-    const args = mockCallRecall.mock.calls[0] as unknown[]
-    const params = args[1] as Record<string, unknown>
-    expect(params.projectId).toBe("test-project")
-    expect(params.embedding).toEqual(FAKE_EMBEDDING)
-    expect(params.limit).toBe(10)
-    expect(params.threshold).toBe(0.3)
-    expect(params.includeArchived).toBe(false)
-  })
-
-  it("passes CLI flag values to callRecall", async () => {
-    const ctx = fakeContext()
+  it("passes CLI flag values to client.recall", async () => {
+    const client = createMockClient()
+    const ctx: CliContext = { config: fakeConfig(), client }
     await handleRecall(
       "auth?",
       {
         limit: "5",
-        threshold: "0.5",
         agent: "alice/code-reviewer",
         engineer: "alice",
         repo: "auth-service",
@@ -186,69 +172,23 @@ describe("handleRecall", () => {
       ctx,
     )
 
-    const args = mockCallRecall.mock.calls[0] as unknown[]
-    const params = args[1] as Record<string, unknown>
+    const args = (client.recall as ReturnType<typeof mock>).mock.calls[0] as unknown[]
+    const params = args[0] as Record<string, unknown>
     expect(params.limit).toBe(5)
-    expect(params.threshold).toBe(0.5)
     expect(params.includeArchived).toBe(true)
-    expect(params.agent).toBe("alice/code-reviewer")
-    expect(params.engineer).toBe("alice")
-    expect(params.repo).toBe("auth-service")
-    expect(params.tags).toEqual(["security", "jwt"])
-  })
-
-  it("calls touchMemories for returned result IDs", async () => {
-    mockCallRecall.mockImplementation(() =>
-      Promise.resolve([fakeRecallResult({ id: "id-1" }), fakeRecallResult({ id: "id-2" })]),
-    )
-
-    const ctx = fakeContext()
-    await handleRecall("auth?", {}, ctx)
-
-    expect(mockCallTouchMemories).toHaveBeenCalledTimes(1)
-    const args = mockCallTouchMemories.mock.calls[0] as unknown[]
-    expect(args[1]).toEqual(["id-1", "id-2"])
-  })
-
-  it("does not call touchMemories when no results", async () => {
-    const ctx = fakeContext()
-    await handleRecall("nonexistent topic", {}, ctx)
-
-    expect(mockCallTouchMemories).not.toHaveBeenCalled()
-  })
-
-  it("promotes archived memories when include_archived is set", async () => {
-    mockCallRecall.mockImplementation(() =>
-      Promise.resolve([
-        fakeRecallResult({ id: "id-active", archived: false }),
-        fakeRecallResult({ id: "id-archived", archived: true }),
-      ]),
-    )
-
-    const ctx = fakeContext()
-    await handleRecall("auth?", { archived: true }, ctx)
-
-    // Should only promote the archived one
-    expect(mockUpdateMemory).toHaveBeenCalledTimes(1)
-    const args = mockUpdateMemory.mock.calls[0] as unknown[]
-    expect(args[1]).toBe("id-archived")
-    expect(args[2]).toEqual({ archived: false })
-  })
-
-  it("does not promote when include_archived is not set", async () => {
-    mockCallRecall.mockImplementation(() => Promise.resolve([fakeRecallResult()]))
-
-    const ctx = fakeContext()
-    await handleRecall("auth?", {}, ctx)
-
-    expect(mockUpdateMemory).not.toHaveBeenCalled()
+    const scope = params.scope as Record<string, unknown>
+    expect(scope.agent).toBe("alice/code-reviewer")
+    expect(scope.engineer).toBe("alice")
+    expect(scope.repo).toBe("auth-service")
+    expect(scope.tags).toEqual(["security", "jwt"])
   })
 
   it("outputs JSON when --json flag is set", async () => {
     const results = [fakeRecallResult()]
-    mockCallRecall.mockImplementation(() => Promise.resolve(results))
-
-    const ctx = fakeContext()
+    const client = createMockClient({
+      recall: mock(() => Promise.resolve(results)),
+    })
+    const ctx: CliContext = { config: fakeConfig(), client }
     await handleRecall("auth?", { json: true }, ctx)
 
     expect(logOutput).toHaveLength(1)
@@ -264,50 +204,55 @@ describe("handleRecall", () => {
 
 describe("handleShow", () => {
   it("resolves a full UUID via exact match", async () => {
-    const ctx = fakeContext()
+    const client = createMockClient()
+    const ctx: CliContext = { config: fakeConfig(), client }
     await handleShow(FAKE_UUID, {}, ctx)
 
-    expect(mockGetMemoryById).toHaveBeenCalledTimes(1)
-    expect(mockGetMemoryById).toHaveBeenCalledWith(fakeDb, FAKE_UUID)
-    expect(mockFindMemoryByIdPrefix).not.toHaveBeenCalled()
+    expect(client.getMemory).toHaveBeenCalledTimes(1)
+    expect(client.getMemory).toHaveBeenCalledWith(FAKE_UUID)
+    expect(client.resolvePrefix).not.toHaveBeenCalled()
   })
 
   it("falls back to prefix match when exact match fails", async () => {
-    mockGetMemoryById.mockImplementation(() => Promise.resolve(null))
-    mockFindMemoryByIdPrefix.mockImplementation(() => Promise.resolve([fakeMemoryRow()]))
-
-    const ctx = fakeContext()
+    const client = createMockClient({
+      getMemory: mock(() => Promise.resolve(null)),
+      resolvePrefix: mock(() => Promise.resolve([fakeMemory()])),
+    })
+    const ctx: CliContext = { config: fakeConfig(), client }
     await handleShow("a1b2c3", {}, ctx)
 
-    expect(mockGetMemoryById).toHaveBeenCalledWith(fakeDb, "a1b2c3")
-    expect(mockFindMemoryByIdPrefix).toHaveBeenCalledWith(fakeDb, "test-project", "a1b2c3")
+    expect(client.getMemory).toHaveBeenCalledWith("a1b2c3")
+    expect(client.resolvePrefix).toHaveBeenCalledWith("a1b2c3")
   })
 
   it("throws when no memory is found by exact or prefix match", async () => {
-    mockGetMemoryById.mockImplementation(() => Promise.resolve(null))
-    mockFindMemoryByIdPrefix.mockImplementation(() => Promise.resolve([]))
-
-    const ctx = fakeContext()
+    const client = createMockClient({
+      getMemory: mock(() => Promise.resolve(null)),
+      resolvePrefix: mock(() => Promise.resolve([])),
+    })
+    const ctx: CliContext = { config: fakeConfig(), client }
     await expect(handleShow("nonexistent", {}, ctx)).rejects.toThrow(
       "Memory not found: nonexistent",
     )
   })
 
   it("throws on ambiguous prefix match", async () => {
-    mockGetMemoryById.mockImplementation(() => Promise.resolve(null))
-    mockFindMemoryByIdPrefix.mockImplementation(() =>
-      Promise.resolve([fakeMemoryRow({ id: FAKE_UUID }), fakeMemoryRow({ id: FAKE_UUID_2 })]),
-    )
-
-    const ctx = fakeContext()
+    const client = createMockClient({
+      getMemory: mock(() => Promise.resolve(null)),
+      resolvePrefix: mock(() =>
+        Promise.resolve([fakeMemory({ id: FAKE_UUID }), fakeMemory({ id: FAKE_UUID_2 })]),
+      ),
+    })
+    const ctx: CliContext = { config: fakeConfig(), client }
     await expect(handleShow("a1b2c3", {}, ctx)).rejects.toThrow("Ambiguous ID prefix")
   })
 
   it("outputs JSON when --json flag is set", async () => {
-    const memory = fakeMemoryRow({ content: "test memory" })
-    mockGetMemoryById.mockImplementation(() => Promise.resolve(memory))
-
-    const ctx = fakeContext()
+    const memory = fakeMemory({ content: "test memory" })
+    const client = createMockClient({
+      getMemory: mock(() => Promise.resolve(memory)),
+    })
+    const ctx: CliContext = { config: fakeConfig(), client }
     await handleShow(FAKE_UUID, { json: true }, ctx)
 
     expect(logOutput).toHaveLength(1)
@@ -317,16 +262,17 @@ describe("handleShow", () => {
   })
 
   it("displays detail view for a found memory", async () => {
-    const memory = fakeMemoryRow({
+    const memory = fakeMemory({
       content: "Auth service uses JWT",
-      created_by: "alice/code-reviewer",
+      createdBy: "alice/code-reviewer",
       importance: "high",
       pinned: true,
       tags: ["security", "jwt"],
     })
-    mockGetMemoryById.mockImplementation(() => Promise.resolve(memory))
-
-    const ctx = fakeContext()
+    const client = createMockClient({
+      getMemory: mock(() => Promise.resolve(memory)),
+    })
+    const ctx: CliContext = { config: fakeConfig(), client }
     await handleShow(FAKE_UUID, {}, ctx)
 
     // Verify output has multiple lines (detail view)

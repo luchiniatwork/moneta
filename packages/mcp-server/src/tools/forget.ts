@@ -1,5 +1,4 @@
-import type { MonetaDb } from "@moneta/shared"
-import { deleteMemory, getMemoryById } from "@moneta/shared"
+import type { MonetaClient } from "@moneta/api-client"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -12,7 +11,7 @@ export interface ForgetParams {
 
 /** Dependencies injected into the forget handler. */
 export interface ForgetDeps {
-  db: MonetaDb
+  client: MonetaClient
 }
 
 /** Result returned from the forget handler. */
@@ -28,25 +27,20 @@ export interface ForgetResult {
 /**
  * Permanently delete a memory.
  *
- * Validates that the memory exists, then hard-deletes it.
+ * Delegates to the API client which handles validation and deletion.
  * No soft-delete, no undo — the agent is explicitly saying
  * "this is wrong, remove it."
  *
- * @param deps - Injected dependencies (db)
+ * @param deps - Injected dependencies (client)
  * @param params - Tool parameters from the agent
  * @returns The deleted memory ID and confirmation
- * @throws Error if the memory is not found
+ * @throws Error if the memory is not found or the API request fails
  */
 export async function handleForget(deps: ForgetDeps, params: ForgetParams): Promise<ForgetResult> {
-  const { db } = deps
+  const { client } = deps
   const { memory_id: memoryId } = params
 
-  const existing = await getMemoryById(db, memoryId)
-  if (!existing) {
-    throw new Error(`Memory not found: ${memoryId}`)
-  }
-
-  await deleteMemory(db, memoryId)
+  await client.deleteMemory(memoryId)
 
   return { id: memoryId, deleted: true }
 }

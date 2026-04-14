@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, mock } from "bun:test"
-import type { AgentIdentity, Config, DedupMatch, MemoryRow, RecallResult } from "@moneta/shared"
+import type { CorrectResult, MonetaClient, RecallResult, RememberResult } from "@moneta/api-client"
+import type { Config } from "@moneta/shared"
 import { handleCorrect } from "../tools/correct.ts"
 import { handleForget } from "../tools/forget.ts"
 import { handlePin } from "../tools/pin.ts"
@@ -8,35 +9,10 @@ import { handleRemember } from "../tools/remember.ts"
 import { handleUnpin } from "../tools/unpin.ts"
 
 // ---------------------------------------------------------------------------
-// Mocks
-// ---------------------------------------------------------------------------
-
-const FAKE_EMBEDDING = new Array(1536).fill(0.1)
-const FAKE_UUID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
-
-const mockEmbed = mock(() => Promise.resolve(FAKE_EMBEDDING))
-const mockInsertMemory = mock(() => Promise.resolve(fakeMemoryRow()))
-const mockGetMemoryById = mock((): Promise<MemoryRow | null> => Promise.resolve(fakeMemoryRow()))
-const mockUpdateMemory = mock(() => Promise.resolve(fakeMemoryRow()))
-const mockDeleteMemory = mock(() => Promise.resolve(true))
-const mockCallRecall = mock(() => Promise.resolve([] as RecallResult[]))
-const mockCallTouchMemories = mock(() => Promise.resolve())
-const mockCallDedupCheck = mock(() => Promise.resolve([] as DedupMatch[]))
-
-mock.module("@moneta/shared", () => ({
-  embed: mockEmbed,
-  insertMemory: mockInsertMemory,
-  getMemoryById: mockGetMemoryById,
-  updateMemory: mockUpdateMemory,
-  deleteMemory: mockDeleteMemory,
-  callRecall: mockCallRecall,
-  callTouchMemories: mockCallTouchMemories,
-  callDedupCheck: mockCallDedupCheck,
-}))
-
-// ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
+
+const FAKE_UUID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 
 function fakeConfig(overrides?: Partial<Config>): Config {
   return {
@@ -53,34 +29,39 @@ function fakeConfig(overrides?: Partial<Config>): Config {
   }
 }
 
-function fakeIdentity(overrides?: Partial<AgentIdentity>): AgentIdentity {
+function fakeMemory(): {
+  id: string
+  projectId: string
+  content: string
+  createdBy: string
+  engineer: string | null
+  agentType: string | null
+  repo: string | null
+  tags: string[]
+  importance: "normal"
+  pinned: boolean
+  archived: boolean
+  createdAt: string
+  updatedAt: string
+  lastAccessedAt: string
+  accessCount: number
+} {
   return {
+    id: FAKE_UUID,
+    projectId: "test-project",
+    content: "Auth service uses JWT with RS256",
     createdBy: "alice/code-reviewer",
     engineer: "alice",
     agentType: "code-reviewer",
-    ...overrides,
-  }
-}
-
-function fakeMemoryRow(overrides?: Partial<MemoryRow>): MemoryRow {
-  return {
-    id: FAKE_UUID,
-    project_id: "test-project",
-    content: "Auth service uses JWT with RS256",
-    embedding: null,
-    created_by: "alice/code-reviewer",
-    engineer: "alice",
-    agent_type: "code-reviewer",
     repo: null,
     tags: [],
     importance: "normal",
     pinned: false,
     archived: false,
-    created_at: new Date("2026-04-08T14:30:00Z"),
-    updated_at: new Date("2026-04-08T14:30:00Z"),
-    last_accessed_at: new Date("2026-04-08T14:30:00Z"),
-    access_count: 0,
-    ...overrides,
+    createdAt: "2026-04-08T14:30:00Z",
+    updatedAt: "2026-04-08T14:30:00Z",
+    lastAccessedAt: "2026-04-08T14:30:00Z",
+    accessCount: 0,
   }
 }
 
@@ -97,40 +78,123 @@ function fakeRecallResult(overrides?: Partial<RecallResult>): RecallResult {
     pinned: false,
     archived: false,
     accessCount: 3,
-    createdAt: new Date("2026-04-08T14:30:00Z"),
-    lastAccessedAt: new Date("2026-04-10T09:15:00Z"),
+    createdAt: "2026-04-08T14:30:00Z",
+    lastAccessedAt: "2026-04-10T09:15:00Z",
     ...overrides,
   }
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: mock db for testing
-const fakeDb = {} as any
+// ---------------------------------------------------------------------------
+// Mock client factory
+// ---------------------------------------------------------------------------
+
+function createMockClient(): {
+  client: MonetaClient
+  mocks: {
+    remember: ReturnType<typeof mock>
+    recall: ReturnType<typeof mock>
+    correct: ReturnType<typeof mock>
+    getMemory: ReturnType<typeof mock>
+    listMemories: ReturnType<typeof mock>
+    deleteMemory: ReturnType<typeof mock>
+    pin: ReturnType<typeof mock>
+    unpin: ReturnType<typeof mock>
+    archive: ReturnType<typeof mock>
+    restore: ReturnType<typeof mock>
+    importMemories: ReturnType<typeof mock>
+    exportMemories: ReturnType<typeof mock>
+    getStats: ReturnType<typeof mock>
+    getCounts: ReturnType<typeof mock>
+    resolvePrefix: ReturnType<typeof mock>
+    touchMemories: ReturnType<typeof mock>
+    archiveStale: ReturnType<typeof mock>
+    health: ReturnType<typeof mock>
+  }
+} {
+  const mocks = {
+    remember: mock(
+      (): Promise<RememberResult> =>
+        Promise.resolve({ id: FAKE_UUID, content: "Test fact", deduplicated: false }),
+    ),
+    recall: mock((): Promise<RecallResult[]> => Promise.resolve([])),
+    correct: mock(
+      (): Promise<CorrectResult> =>
+        Promise.resolve({
+          id: FAKE_UUID,
+          oldContent: "Auth service uses JWT with RS256",
+          newContent: "Updated fact",
+        }),
+    ),
+    getMemory: mock(() => Promise.resolve(fakeMemory())),
+    listMemories: mock(() => Promise.resolve({ memories: [], total: 0 })),
+    deleteMemory: mock(() => Promise.resolve(true)),
+    pin: mock(() => Promise.resolve({ ...fakeMemory(), pinned: true })),
+    unpin: mock(() => Promise.resolve({ ...fakeMemory(), pinned: false })),
+    archive: mock(() => Promise.resolve({ ...fakeMemory(), archived: true })),
+    restore: mock(() => Promise.resolve({ ...fakeMemory(), archived: false })),
+    importMemories: mock(() => Promise.resolve({ imported: 0, skipped: 0 })),
+    exportMemories: mock(() => Promise.resolve([])),
+    getStats: mock(() =>
+      Promise.resolve({
+        total: 0,
+        active: 0,
+        archived: 0,
+        pinned: 0,
+        byEngineer: [],
+        byRepo: [],
+        topTags: [],
+        approachingStale: 0,
+        archivedLast7Days: 0,
+        createdToday: 0,
+        mostAccessed: [],
+      }),
+    ),
+    getCounts: mock(() => Promise.resolve({ active: 0, archived: 0, pinned: 0 })),
+    resolvePrefix: mock(() => Promise.resolve([])),
+    touchMemories: mock(() => Promise.resolve(0)),
+    archiveStale: mock(() => Promise.resolve(0)),
+    health: mock(() => Promise.resolve({ status: "ok" as const, project: "test", version: "1" })),
+  }
+
+  const client: MonetaClient = {
+    remember: mocks.remember as MonetaClient["remember"],
+    recall: mocks.recall as MonetaClient["recall"],
+    correct: mocks.correct as MonetaClient["correct"],
+    getMemory: mocks.getMemory as MonetaClient["getMemory"],
+    listMemories: mocks.listMemories as MonetaClient["listMemories"],
+    deleteMemory: mocks.deleteMemory as MonetaClient["deleteMemory"],
+    pin: mocks.pin as MonetaClient["pin"],
+    unpin: mocks.unpin as MonetaClient["unpin"],
+    archive: mocks.archive as MonetaClient["archive"],
+    restore: mocks.restore as MonetaClient["restore"],
+    importMemories: mocks.importMemories as MonetaClient["importMemories"],
+    exportMemories: mocks.exportMemories as MonetaClient["exportMemories"],
+    getStats: mocks.getStats as MonetaClient["getStats"],
+    getCounts: mocks.getCounts as MonetaClient["getCounts"],
+    resolvePrefix: mocks.resolvePrefix as MonetaClient["resolvePrefix"],
+    touchMemories: mocks.touchMemories as MonetaClient["touchMemories"],
+    archiveStale: mocks.archiveStale as MonetaClient["archiveStale"],
+    health: mocks.health as MonetaClient["health"],
+  }
+
+  return { client, mocks }
+}
+
+// ---------------------------------------------------------------------------
+// Shared state
+// ---------------------------------------------------------------------------
+
+let client: MonetaClient
+let mocks: ReturnType<typeof createMockClient>["mocks"]
 
 // ---------------------------------------------------------------------------
 // Setup / Teardown
 // ---------------------------------------------------------------------------
 
 beforeEach(() => {
-  mockEmbed.mockClear()
-  mockInsertMemory.mockClear()
-  mockGetMemoryById.mockClear()
-  mockUpdateMemory.mockClear()
-  mockDeleteMemory.mockClear()
-  mockCallRecall.mockClear()
-  mockCallTouchMemories.mockClear()
-  mockCallDedupCheck.mockClear()
-
-  // Reset to default implementations
-  mockEmbed.mockImplementation(() => Promise.resolve(FAKE_EMBEDDING))
-  mockInsertMemory.mockImplementation(() => Promise.resolve(fakeMemoryRow()))
-  mockGetMemoryById.mockImplementation(
-    (): Promise<MemoryRow | null> => Promise.resolve(fakeMemoryRow()),
-  )
-  mockUpdateMemory.mockImplementation(() => Promise.resolve(fakeMemoryRow()))
-  mockDeleteMemory.mockImplementation(() => Promise.resolve(true))
-  mockCallRecall.mockImplementation(() => Promise.resolve([]))
-  mockCallTouchMemories.mockImplementation(() => Promise.resolve())
-  mockCallDedupCheck.mockImplementation(() => Promise.resolve([] as DedupMatch[]))
+  const mockClient = createMockClient()
+  client = mockClient.client
+  mocks = mockClient.mocks
 })
 
 // ---------------------------------------------------------------------------
@@ -138,83 +202,55 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe("handleRemember", () => {
-  it("inserts a new memory when no duplicates exist", async () => {
-    const config = fakeConfig()
-    const identity = fakeIdentity()
-    const result = await handleRemember({ config, db: fakeDb, identity }, { content: "Test fact" })
+  it("calls client.remember and returns the result", async () => {
+    const result = await handleRemember({ client }, { content: "Test fact" })
 
     expect(result.deduplicated).toBe(false)
     expect(result.content).toBe("Test fact")
     expect(result.id).toBe(FAKE_UUID)
-    expect(mockEmbed).toHaveBeenCalledWith("Test fact", "sk-test", "text-embedding-3-small")
-    expect(mockCallDedupCheck).toHaveBeenCalledTimes(1)
-    expect(mockInsertMemory).toHaveBeenCalledTimes(1)
+    expect(mocks.remember).toHaveBeenCalledTimes(1)
+    expect(mocks.remember).toHaveBeenCalledWith({
+      content: "Test fact",
+      tags: undefined,
+      repo: undefined,
+      importance: undefined,
+    })
   })
 
-  it("updates in place when same agent has a near-duplicate", async () => {
-    mockCallDedupCheck.mockImplementation(() =>
-      Promise.resolve([
-        { id: FAKE_UUID, content: "Old fact", similarity: 0.97, createdBy: "alice/code-reviewer" },
-      ]),
+  it("passes tags, repo, and importance to the client", async () => {
+    await handleRemember(
+      { client },
+      {
+        content: "Critical fact",
+        tags: ["security"],
+        repo: "auth-service",
+        importance: "critical",
+      },
     )
 
-    const config = fakeConfig()
-    const identity = fakeIdentity()
-    const result = await handleRemember(
-      { config, db: fakeDb, identity },
-      { content: "Updated fact" },
+    expect(mocks.remember).toHaveBeenCalledWith({
+      content: "Critical fact",
+      tags: ["security"],
+      repo: "auth-service",
+      importance: "critical",
+    })
+  })
+
+  it("returns deduplicated result when client reports dedup", async () => {
+    mocks.remember.mockImplementation(() =>
+      Promise.resolve({ id: FAKE_UUID, content: "Updated fact", deduplicated: true }),
     )
+
+    const result = await handleRemember({ client }, { content: "Updated fact" })
 
     expect(result.deduplicated).toBe(true)
     expect(result.id).toBe(FAKE_UUID)
-    expect(mockUpdateMemory).toHaveBeenCalledTimes(1)
-    expect(mockInsertMemory).toHaveBeenCalledTimes(0)
   })
 
-  it("inserts with corroborated tag when different agent has a near-duplicate", async () => {
-    mockCallDedupCheck.mockImplementation(() =>
-      Promise.resolve([
-        { id: FAKE_UUID, content: "Same fact", similarity: 0.97, createdBy: "bob/architect" },
-      ]),
-    )
+  it("propagates client errors", async () => {
+    mocks.remember.mockImplementation(() => Promise.reject(new Error("API error")))
 
-    const config = fakeConfig()
-    const identity = fakeIdentity()
-    const result = await handleRemember(
-      { config, db: fakeDb, identity },
-      { content: "Same fact from different agent" },
-    )
-
-    expect(result.deduplicated).toBe(false)
-    expect(mockInsertMemory).toHaveBeenCalledTimes(1)
-    const insertCall = mockInsertMemory.mock.calls[0] as unknown[]
-    const insertArgs = insertCall[1] as Record<string, unknown>
-    expect(insertArgs.tags).toContain("corroborated")
-  })
-
-  it("auto-pins critical memories", async () => {
-    const config = fakeConfig()
-    const identity = fakeIdentity()
-    await handleRemember(
-      { config, db: fakeDb, identity },
-      { content: "Critical fact", importance: "critical" },
-    )
-
-    const insertCall = mockInsertMemory.mock.calls[0] as unknown[]
-    const insertArgs = insertCall[1] as Record<string, unknown>
-    expect(insertArgs.pinned).toBe(true)
-    expect(insertArgs.importance).toBe("critical")
-  })
-
-  it("wraps embedding failures with actionable message", async () => {
-    mockEmbed.mockImplementation(() => Promise.reject(new Error("401 Unauthorized")))
-
-    const config = fakeConfig()
-    const identity = fakeIdentity()
-
-    expect(handleRemember({ config, db: fakeDb, identity }, { content: "Test" })).rejects.toThrow(
-      "Failed to generate embedding",
-    )
+    expect(handleRemember({ client }, { content: "Test" })).rejects.toThrow("API error")
   })
 })
 
@@ -225,43 +261,51 @@ describe("handleRemember", () => {
 describe("handleRecall", () => {
   it("returns empty array when no results found", async () => {
     const config = fakeConfig()
-    const results = await handleRecall({ config, db: fakeDb }, { question: "How does auth work?" })
+    const results = await handleRecall({ client, config }, { question: "How does auth work?" })
 
     expect(results).toHaveLength(0)
-    expect(mockEmbed).toHaveBeenCalledTimes(1)
-    expect(mockCallTouchMemories).not.toHaveBeenCalled()
+    expect(mocks.recall).toHaveBeenCalledTimes(1)
   })
 
-  it("returns results and touches memories", async () => {
+  it("returns results from client", async () => {
     const recallResult = fakeRecallResult()
-    mockCallRecall.mockImplementation(() => Promise.resolve([recallResult]))
+    mocks.recall.mockImplementation(() => Promise.resolve([recallResult]))
 
     const config = fakeConfig()
-    const results = await handleRecall({ config, db: fakeDb }, { question: "How does auth work?" })
+    const results = await handleRecall({ client, config }, { question: "How does auth work?" })
 
     expect(results).toHaveLength(1)
     expect(results[0]?.content).toBe("Auth service uses JWT with RS256")
-    expect(mockCallTouchMemories).toHaveBeenCalledWith(fakeDb, [FAKE_UUID])
   })
 
-  it("promotes archived memories when include_archived is true", async () => {
-    const archivedResult = fakeRecallResult({ archived: true })
-    mockCallRecall.mockImplementation(() => Promise.resolve([archivedResult]))
+  it("uses config.searchLimit as default limit", async () => {
+    const config = fakeConfig({ searchLimit: 25 })
+    await handleRecall({ client, config }, { question: "Test" })
 
-    const config = fakeConfig()
-    const results = await handleRecall(
-      { config, db: fakeDb },
-      { question: "Old question", include_archived: true },
-    )
-
-    expect(results[0]?.archived).toBe(false)
-    expect(mockUpdateMemory).toHaveBeenCalledWith(fakeDb, FAKE_UUID, { archived: false })
+    expect(mocks.recall).toHaveBeenCalledWith({
+      question: "Test",
+      scope: undefined,
+      limit: 25,
+      includeArchived: undefined,
+    })
   })
 
-  it("passes scope filters to callRecall", async () => {
+  it("passes explicit limit over config default", async () => {
+    const config = fakeConfig({ searchLimit: 25 })
+    await handleRecall({ client, config }, { question: "Test", limit: 5 })
+
+    expect(mocks.recall).toHaveBeenCalledWith({
+      question: "Test",
+      scope: undefined,
+      limit: 5,
+      includeArchived: undefined,
+    })
+  })
+
+  it("passes scope filters to client.recall", async () => {
     const config = fakeConfig()
     await handleRecall(
-      { config, db: fakeDb },
+      { client, config },
       {
         question: "Test",
         scope: { agent: "bob/architect", repo: "auth-service", tags: ["security"] },
@@ -269,21 +313,31 @@ describe("handleRecall", () => {
       },
     )
 
-    const recallCall = mockCallRecall.mock.calls[0] as unknown[]
-    const recallArgs = recallCall[1] as Record<string, unknown>
-    expect(recallArgs.agent).toBe("bob/architect")
-    expect(recallArgs.repo).toBe("auth-service")
-    expect(recallArgs.tags).toEqual(["security"])
-    expect(recallArgs.limit).toBe(5)
+    expect(mocks.recall).toHaveBeenCalledWith({
+      question: "Test",
+      scope: { agent: "bob/architect", repo: "auth-service", tags: ["security"] },
+      limit: 5,
+      includeArchived: undefined,
+    })
   })
 
-  it("wraps embedding failures with actionable message", async () => {
-    mockEmbed.mockImplementation(() => Promise.reject(new Error("network error")))
+  it("passes include_archived as includeArchived to client", async () => {
+    const config = fakeConfig()
+    await handleRecall({ client, config }, { question: "Old question", include_archived: true })
+
+    expect(mocks.recall).toHaveBeenCalledWith({
+      question: "Old question",
+      scope: undefined,
+      limit: 10,
+      includeArchived: true,
+    })
+  })
+
+  it("propagates client errors", async () => {
+    mocks.recall.mockImplementation(() => Promise.reject(new Error("network error")))
 
     const config = fakeConfig()
-    expect(handleRecall({ config, db: fakeDb }, { question: "Test" })).rejects.toThrow(
-      "Failed to generate embedding",
-    )
+    expect(handleRecall({ client, config }, { question: "Test" })).rejects.toThrow("network error")
   })
 })
 
@@ -292,19 +346,18 @@ describe("handleRecall", () => {
 // ---------------------------------------------------------------------------
 
 describe("handlePin", () => {
-  it("pins an existing memory", async () => {
-    const result = await handlePin({ db: fakeDb }, { memory_id: FAKE_UUID })
+  it("calls client.pin and returns result", async () => {
+    const result = await handlePin({ client }, { memory_id: FAKE_UUID })
 
     expect(result.id).toBe(FAKE_UUID)
     expect(result.pinned).toBe(true)
-    expect(mockGetMemoryById).toHaveBeenCalledWith(fakeDb, FAKE_UUID)
-    expect(mockUpdateMemory).toHaveBeenCalledWith(fakeDb, FAKE_UUID, { pinned: true })
+    expect(mocks.pin).toHaveBeenCalledWith(FAKE_UUID)
   })
 
-  it("throws when memory is not found", async () => {
-    mockGetMemoryById.mockImplementation(() => Promise.resolve(null))
+  it("propagates client errors for not found", async () => {
+    mocks.pin.mockImplementation(() => Promise.reject(new Error(`Memory not found: ${FAKE_UUID}`)))
 
-    expect(handlePin({ db: fakeDb }, { memory_id: FAKE_UUID })).rejects.toThrow(
+    expect(handlePin({ client }, { memory_id: FAKE_UUID })).rejects.toThrow(
       `Memory not found: ${FAKE_UUID}`,
     )
   })
@@ -315,18 +368,20 @@ describe("handlePin", () => {
 // ---------------------------------------------------------------------------
 
 describe("handleUnpin", () => {
-  it("unpins an existing memory", async () => {
-    const result = await handleUnpin({ db: fakeDb }, { memory_id: FAKE_UUID })
+  it("calls client.unpin and returns result", async () => {
+    const result = await handleUnpin({ client }, { memory_id: FAKE_UUID })
 
     expect(result.id).toBe(FAKE_UUID)
     expect(result.pinned).toBe(false)
-    expect(mockUpdateMemory).toHaveBeenCalledWith(fakeDb, FAKE_UUID, { pinned: false })
+    expect(mocks.unpin).toHaveBeenCalledWith(FAKE_UUID)
   })
 
-  it("throws when memory is not found", async () => {
-    mockGetMemoryById.mockImplementation(() => Promise.resolve(null))
+  it("propagates client errors for not found", async () => {
+    mocks.unpin.mockImplementation(() =>
+      Promise.reject(new Error(`Memory not found: ${FAKE_UUID}`)),
+    )
 
-    expect(handleUnpin({ db: fakeDb }, { memory_id: FAKE_UUID })).rejects.toThrow(
+    expect(handleUnpin({ client }, { memory_id: FAKE_UUID })).rejects.toThrow(
       `Memory not found: ${FAKE_UUID}`,
     )
   })
@@ -337,19 +392,20 @@ describe("handleUnpin", () => {
 // ---------------------------------------------------------------------------
 
 describe("handleForget", () => {
-  it("deletes an existing memory", async () => {
-    const result = await handleForget({ db: fakeDb }, { memory_id: FAKE_UUID })
+  it("calls client.deleteMemory and returns result", async () => {
+    const result = await handleForget({ client }, { memory_id: FAKE_UUID })
 
     expect(result.id).toBe(FAKE_UUID)
     expect(result.deleted).toBe(true)
-    expect(mockGetMemoryById).toHaveBeenCalledWith(fakeDb, FAKE_UUID)
-    expect(mockDeleteMemory).toHaveBeenCalledWith(fakeDb, FAKE_UUID)
+    expect(mocks.deleteMemory).toHaveBeenCalledWith(FAKE_UUID)
   })
 
-  it("throws when memory is not found", async () => {
-    mockGetMemoryById.mockImplementation(() => Promise.resolve(null))
+  it("propagates client errors for not found", async () => {
+    mocks.deleteMemory.mockImplementation(() =>
+      Promise.reject(new Error(`Memory not found: ${FAKE_UUID}`)),
+    )
 
-    expect(handleForget({ db: fakeDb }, { memory_id: FAKE_UUID })).rejects.toThrow(
+    expect(handleForget({ client }, { memory_id: FAKE_UUID })).rejects.toThrow(
       `Memory not found: ${FAKE_UUID}`,
     )
   })
@@ -360,83 +416,51 @@ describe("handleForget", () => {
 // ---------------------------------------------------------------------------
 
 describe("handleCorrect", () => {
-  it("updates content and re-embeds", async () => {
-    const config = fakeConfig()
+  it("calls client.correct and returns result", async () => {
+    mocks.correct.mockImplementation(() =>
+      Promise.resolve({
+        id: FAKE_UUID,
+        oldContent: "Auth service uses JWT with RS256",
+        newContent: "Updated fact about auth",
+      }),
+    )
+
     const result = await handleCorrect(
-      { config, db: fakeDb },
+      { client },
       { memory_id: FAKE_UUID, new_content: "Updated fact about auth" },
     )
 
     expect(result.id).toBe(FAKE_UUID)
     expect(result.oldContent).toBe("Auth service uses JWT with RS256")
     expect(result.newContent).toBe("Updated fact about auth")
-    expect(mockEmbed).toHaveBeenCalledWith(
-      "Updated fact about auth",
-      "sk-test",
-      "text-embedding-3-small",
-    )
-    expect(mockUpdateMemory).toHaveBeenCalledWith(fakeDb, FAKE_UUID, {
-      content: "Updated fact about auth",
-      newEmbedding: FAKE_EMBEDDING,
-    })
+    expect(mocks.correct).toHaveBeenCalledWith(FAKE_UUID, "Updated fact about auth")
   })
 
-  it("throws when memory is not found", async () => {
-    mockGetMemoryById.mockImplementation(() => Promise.resolve(null))
+  it("propagates client errors for not found", async () => {
+    mocks.correct.mockImplementation(() =>
+      Promise.reject(new Error(`Memory not found: ${FAKE_UUID}`)),
+    )
 
-    const config = fakeConfig()
     expect(
-      handleCorrect({ config, db: fakeDb }, { memory_id: FAKE_UUID, new_content: "New fact" }),
+      handleCorrect({ client }, { memory_id: FAKE_UUID, new_content: "New fact" }),
     ).rejects.toThrow(`Memory not found: ${FAKE_UUID}`)
   })
 
-  it("throws on empty content", async () => {
-    const config = fakeConfig()
-    expect(
-      handleCorrect({ config, db: fakeDb }, { memory_id: FAKE_UUID, new_content: "" }),
-    ).rejects.toThrow("Content must not be empty")
+  it("propagates client errors for empty content", async () => {
+    mocks.correct.mockImplementation(() => Promise.reject(new Error("Content must not be empty")))
+
+    expect(handleCorrect({ client }, { memory_id: FAKE_UUID, new_content: "" })).rejects.toThrow(
+      "Content must not be empty",
+    )
   })
 
-  it("throws on whitespace-only content", async () => {
-    const config = fakeConfig()
-    expect(
-      handleCorrect({ config, db: fakeDb }, { memory_id: FAKE_UUID, new_content: "   " }),
-    ).rejects.toThrow("Content must not be empty")
-  })
-
-  it("throws on content exceeding max length", async () => {
-    const config = fakeConfig({ maxContentLength: 10 })
-    expect(
-      handleCorrect(
-        { config, db: fakeDb },
-        { memory_id: FAKE_UUID, new_content: "This is too long for the limit" },
-      ),
-    ).rejects.toThrow("Content exceeds maximum length")
-  })
-
-  it("preserves original author attribution", async () => {
-    mockGetMemoryById.mockImplementation(() =>
-      Promise.resolve(fakeMemoryRow({ created_by: "bob/architect" })),
+  it("propagates client errors for embedding failures", async () => {
+    mocks.correct.mockImplementation(() =>
+      Promise.reject(new Error("Failed to generate embedding: rate limited")),
     )
 
-    const config = fakeConfig()
-    await handleCorrect(
-      { config, db: fakeDb },
-      { memory_id: FAKE_UUID, new_content: "Corrected fact" },
-    )
-
-    const updateCall = mockUpdateMemory.mock.calls[0] as unknown[]
-    const updateArgs = updateCall[2] as Record<string, unknown>
-    // created_by should NOT be in the update payload
-    expect(updateArgs).not.toHaveProperty("created_by")
-  })
-
-  it("wraps embedding failures with actionable message", async () => {
-    mockEmbed.mockImplementation(() => Promise.reject(new Error("rate limited")))
-
-    const config = fakeConfig()
     expect(
-      handleCorrect({ config, db: fakeDb }, { memory_id: FAKE_UUID, new_content: "New fact" }),
+      handleCorrect({ client }, { memory_id: FAKE_UUID, new_content: "New fact" }),
     ).rejects.toThrow("Failed to generate embedding")
   })
 })
@@ -448,11 +472,17 @@ describe("handleCorrect", () => {
 describe("full lifecycle", () => {
   it("completes the entire memory lifecycle", async () => {
     const config = fakeConfig()
-    const identity = fakeIdentity()
 
     // 1. Remember a fact
+    mocks.remember.mockImplementation(() =>
+      Promise.resolve({
+        id: FAKE_UUID,
+        content: "API uses REST with JSON",
+        deduplicated: false,
+      }),
+    )
     const rememberResult = await handleRemember(
-      { config, db: fakeDb, identity },
+      { client },
       { content: "API uses REST with JSON", tags: ["architecture"] },
     )
     expect(rememberResult.id).toBe(FAKE_UUID)
@@ -460,33 +490,39 @@ describe("full lifecycle", () => {
 
     // 2. Recall it
     const recallResults = [fakeRecallResult({ content: "API uses REST with JSON" })]
-    mockCallRecall.mockImplementation(() => Promise.resolve(recallResults))
+    mocks.recall.mockImplementation(() => Promise.resolve(recallResults))
 
     const searchResults = await handleRecall(
-      { config, db: fakeDb },
+      { client, config },
       { question: "What API format do we use?" },
     )
     expect(searchResults).toHaveLength(1)
-    expect(mockCallTouchMemories).toHaveBeenCalled()
 
     // 3. Pin it
-    const pinResult = await handlePin({ db: fakeDb }, { memory_id: FAKE_UUID })
+    const pinResult = await handlePin({ client }, { memory_id: FAKE_UUID })
     expect(pinResult.pinned).toBe(true)
 
     // 4. Correct it
+    mocks.correct.mockImplementation(() =>
+      Promise.resolve({
+        id: FAKE_UUID,
+        oldContent: "API uses REST with JSON",
+        newContent: "API uses REST with JSON and supports GraphQL",
+      }),
+    )
     const correctResult = await handleCorrect(
-      { config, db: fakeDb },
+      { client },
       { memory_id: FAKE_UUID, new_content: "API uses REST with JSON and supports GraphQL" },
     )
-    expect(correctResult.oldContent).toBe("Auth service uses JWT with RS256")
+    expect(correctResult.oldContent).toBe("API uses REST with JSON")
     expect(correctResult.newContent).toBe("API uses REST with JSON and supports GraphQL")
 
     // 5. Unpin it
-    const unpinResult = await handleUnpin({ db: fakeDb }, { memory_id: FAKE_UUID })
+    const unpinResult = await handleUnpin({ client }, { memory_id: FAKE_UUID })
     expect(unpinResult.pinned).toBe(false)
 
     // 6. Forget it
-    const forgetResult = await handleForget({ db: fakeDb }, { memory_id: FAKE_UUID })
+    const forgetResult = await handleForget({ client }, { memory_id: FAKE_UUID })
     expect(forgetResult.deleted).toBe(true)
   })
 })
@@ -496,50 +532,45 @@ describe("full lifecycle", () => {
 // ---------------------------------------------------------------------------
 
 describe("cross-agent attribution", () => {
-  it("preserves original author when a different agent corrects a memory", async () => {
+  it("delegates to client which preserves original author on correct", async () => {
     const config = fakeConfig()
-    const agentA = fakeIdentity({
-      createdBy: "alice/reviewer",
-      engineer: "alice",
-      agentType: "reviewer",
-    })
 
     // Agent A remembers a fact
-    await handleRemember(
-      { config, db: fakeDb, identity: agentA },
-      { content: "Database uses PostgreSQL 16" },
+    mocks.remember.mockImplementation(() =>
+      Promise.resolve({
+        id: FAKE_UUID,
+        content: "Database uses PostgreSQL 16",
+        deduplicated: false,
+      }),
     )
-
-    const insertCall = mockInsertMemory.mock.calls[0] as unknown[]
-    const insertArgs = insertCall[1] as Record<string, unknown>
-    expect(insertArgs.created_by).toBe("alice/reviewer")
+    await handleRemember({ client }, { content: "Database uses PostgreSQL 16" })
+    expect(mocks.remember).toHaveBeenCalledTimes(1)
 
     // Agent B recalls it
     const recallResults = [
       fakeRecallResult({ createdBy: "alice/reviewer", content: "Database uses PostgreSQL 16" }),
     ]
-    mockCallRecall.mockImplementation(() => Promise.resolve(recallResults))
+    mocks.recall.mockImplementation(() => Promise.resolve(recallResults))
 
-    const results = await handleRecall(
-      { config, db: fakeDb },
-      { question: "What database do we use?" },
-    )
+    const results = await handleRecall({ client, config }, { question: "What database do we use?" })
     expect(results[0]?.createdBy).toBe("alice/reviewer")
 
-    // Agent B corrects it — original author should be preserved
-    mockGetMemoryById.mockImplementation(() =>
-      Promise.resolve(fakeMemoryRow({ created_by: "alice/reviewer" })),
+    // Agent B corrects it — the API server preserves original author
+    mocks.correct.mockImplementation(() =>
+      Promise.resolve({
+        id: FAKE_UUID,
+        oldContent: "Database uses PostgreSQL 16",
+        newContent: "Database uses PostgreSQL 17",
+      }),
     )
 
-    await handleCorrect(
-      { config, db: fakeDb },
+    const correctResult = await handleCorrect(
+      { client },
       { memory_id: FAKE_UUID, new_content: "Database uses PostgreSQL 17" },
     )
 
-    // The updateMemory call should NOT include created_by
-    const updateCall = mockUpdateMemory.mock.calls[0] as unknown[]
-    const updateArgs = updateCall[2] as Record<string, unknown>
-    expect(updateArgs).not.toHaveProperty("created_by")
-    expect(updateArgs.content).toBe("Database uses PostgreSQL 17")
+    // Verify client.correct was called with ID and new content only
+    expect(mocks.correct).toHaveBeenCalledWith(FAKE_UUID, "Database uses PostgreSQL 17")
+    expect(correctResult.newContent).toBe("Database uses PostgreSQL 17")
   })
 })

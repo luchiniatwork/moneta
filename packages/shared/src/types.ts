@@ -93,6 +93,36 @@ export interface Config {
   searchLimit: number
   /** Maximum characters per memory content */
   maxContentLength: number
+  /** Base URL of the Moneta REST API server (e.g. "http://localhost:3000/api/v1") */
+  apiUrl?: string
+  /** API key for authenticating with the REST API server */
+  apiKey?: string
+}
+
+// ---------------------------------------------------------------------------
+// Statistics
+// ---------------------------------------------------------------------------
+
+/** Aggregate memory counts used in headers and list footers. */
+export interface MemoryCounts {
+  active: number
+  archived: number
+  pinned: number
+}
+
+/** Aggregate memory statistics for the stats dashboard. */
+export interface MemoryStats {
+  total: number
+  active: number
+  archived: number
+  pinned: number
+  byEngineer: Array<{ engineer: string; count: number; pinned: number }>
+  byRepo: Array<{ repo: string; count: number }>
+  topTags: Array<{ tag: string; count: number }>
+  approachingStale: number
+  archivedLast7Days: number
+  createdToday: number
+  mostAccessed: Array<{ id: string; content: string; accessCount: number }>
 }
 
 // ---------------------------------------------------------------------------

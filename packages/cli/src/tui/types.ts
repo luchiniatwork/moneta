@@ -1,4 +1,4 @@
-import type { Importance } from "@moneta/shared"
+import type { Importance } from "@moneta/api-client"
 
 // ---------------------------------------------------------------------------
 // Modes & Overlays
@@ -17,8 +17,9 @@ export type Overlay = "none" | "help" | "confirm" | "filters" | "tags" | "add"
 /**
  * Normalized memory representation used by all TUI components.
  *
- * Bridges the snake_case `MemoryRow` (from list queries) and the
- * camelCase `RecallResult` (from semantic search) into a single shape.
+ * Bridges the API `Memory` and `RecallResult` types (both camelCase
+ * with ISO string dates) into a single shape with parsed Date objects
+ * for easy formatting.
  */
 export interface MemoryItem {
   id: string

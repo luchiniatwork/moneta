@@ -6,7 +6,7 @@
     "packages/*"
   ],
   "scripts": {
-    "typecheck": "tsc --noEmit -p packages/shared/tsconfig.json && tsc --noEmit -p packages/mcp-server/tsconfig.json && tsc --noEmit -p packages/cli/tsconfig.json",
+    "typecheck": "tsc --noEmit -p packages/shared/tsconfig.json && tsc --noEmit -p packages/api-client/tsconfig.json && tsc --noEmit -p packages/api-server/tsconfig.json && tsc --noEmit -p packages/mcp-server/tsconfig.json && tsc --noEmit -p packages/cli/tsconfig.json",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
@@ -14,9 +14,13 @@
     "build": "bun run build:cli && bun run build:mcp",
     "build:cli": "bun packages/cli/build.ts",
     "build:mcp": "bun packages/mcp-server/build.ts",
+    "dev:api": "bun run --watch packages/api-server/src/index.ts",
     "db:start": "bunx supabase start",
     "db:stop": "bunx supabase stop",
-    "db:reset": "bunx supabase db reset"
+    "db:reset": "bunx supabase db reset",
+    "docker:build": "docker build -t moneta-api .",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.11",

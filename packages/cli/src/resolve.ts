@@ -1,5 +1,4 @@
-import type { MemoryRow } from "@moneta/shared"
-import { findMemoryByIdPrefix, getMemoryById } from "@moneta/shared"
+import type { Memory } from "@moneta/api-client"
 import type { CliContext } from "./context.ts"
 import { shortId } from "./format.ts"
 
@@ -10,22 +9,22 @@ import { shortId } from "./format.ts"
 /**
  * Resolve a memory ID that may be a full UUID or a short prefix.
  *
- * Tries an exact match first, then falls back to prefix matching.
- * Used by all commands that operate on a single memory (show, pin,
- * unpin, archive, restore, forget, correct).
+ * Tries an exact match first via the API, then falls back to prefix
+ * matching. Used by all commands that operate on a single memory
+ * (show, pin, unpin, archive, restore, forget, correct).
  *
  * @param id - Full UUID or prefix (6+ chars)
  * @param ctx - CLI context
- * @returns The resolved memory row
+ * @returns The resolved memory
  * @throws If the memory is not found or the prefix is ambiguous
  */
-export async function resolveMemory(id: string, ctx: CliContext): Promise<MemoryRow> {
+export async function resolveMemory(id: string, ctx: CliContext): Promise<Memory> {
   // Try exact match first
-  const exact = await getMemoryById(ctx.db, id)
+  const exact = await ctx.client.getMemory(id)
   if (exact) return exact
 
   // Try prefix match
-  const matches = await findMemoryByIdPrefix(ctx.db, ctx.config.projectId, id)
+  const matches = await ctx.client.resolvePrefix(id)
 
   if (matches.length === 0) {
     throw new Error(`Memory not found: ${id}`)
@@ -36,5 +35,5 @@ export async function resolveMemory(id: string, ctx: CliContext): Promise<Memory
     throw new Error(`Ambiguous ID prefix "${id}", matches: ${ids}. Be more specific.`)
   }
 
-  return matches[0] as MemoryRow
+  return matches[0] as Memory
 }

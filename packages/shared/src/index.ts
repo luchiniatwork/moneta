@@ -1,6 +1,6 @@
-// Types
-
 // Config
+
+export type { ValidateConfigOpts } from "./config.ts"
 export { loadConfig, validateConfig } from "./config.ts"
 // Database
 export {
@@ -11,7 +11,9 @@ export {
   createDb,
   deleteMemory,
   findMemoryByIdPrefix,
+  getCounts,
   getMemoryById,
+  getStats,
   insertMemory,
   listMemories,
   updateMemory,
@@ -28,7 +30,9 @@ export type {
   DedupMatch,
   Importance,
   ListMemoriesParams,
+  MemoryCounts,
   MemoryRow,
+  MemoryStats,
   MemoryUpdate,
   MonetaDb,
   NewMemory,

@@ -1,6 +1,5 @@
 import { readFileSync } from "node:fs"
-import type { Importance } from "@moneta/shared"
-import { callDedupCheck, embedBatch, insertMemory, parseAgentId } from "@moneta/shared"
+import type { Importance, ImportEntry } from "@moneta/api-client"
 import type { CliContext } from "../context.ts"
 
 // ---------------------------------------------------------------------------
@@ -12,27 +11,11 @@ export interface ImportOptions {
   agent?: string
 }
 
-/** Shape of a single entry in the JSONL import file. */
-interface ImportEntry {
-  content: string
-  tags?: string[]
-  repo?: string
-  importance?: Importance
-}
-
-/** Result summary of an import operation. */
-interface ImportSummary {
-  imported: number
-  skipped: number
-  errors: number
-}
-
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 const VALID_IMPORTANCE_VALUES = new Set<string>(["normal", "high", "critical"])
-const EMBEDDING_BATCH_SIZE = 100
 
 // ---------------------------------------------------------------------------
 // Handler
@@ -41,22 +24,19 @@ const EMBEDDING_BATCH_SIZE = 100
 /**
  * Execute the `moneta import <file>` command.
  *
- * Reads a JSONL file (one JSON object per line), generates embeddings
- * in batch, checks for near-duplicates, and inserts new memories.
- * Progress is reported to stderr so it doesn't pollute stdout.
+ * Reads a JSONL file (one JSON object per line), validates entries,
+ * and sends them to the API for bulk import. The server handles
+ * embedding, deduplication, and insertion.
  *
  * @param file - Path to the JSONL file
  * @param options - CLI flag values
- * @param ctx - CLI context with config and database
+ * @param ctx - CLI context with config and API client
  */
 export async function handleImport(
   file: string,
-  options: ImportOptions,
+  _options: ImportOptions,
   ctx: CliContext,
 ): Promise<void> {
-  const agentStr = options.agent ?? "cli/import"
-  const identity = parseAgentId(agentStr)
-
   // Read and parse file
   const entries = parseJsonlFile(file, ctx.config.maxContentLength)
 
@@ -66,21 +46,18 @@ export async function handleImport(
   }
 
   progress(`Parsed ${entries.length} entries from ${file}`)
+  progress("Sending to API for import...")
 
-  // Generate embeddings in batches
-  const texts = entries.map((e) => e.content)
-  const embeddings = await generateEmbeddings(texts, ctx)
-
-  // Insert with dedup checks
-  const summary = await insertWithDedup(entries, embeddings, identity, ctx)
+  // Send to API for bulk import
+  const result = await ctx.client.importMemories(entries)
 
   // Print summary
-  const parts = [`Imported ${summary.imported} memories.`]
-  if (summary.skipped > 0) {
-    parts.push(`${summary.skipped} near-duplicates skipped.`)
+  const parts = [`Imported ${result.imported} memories.`]
+  if (result.skipped > 0) {
+    parts.push(`${result.skipped} near-duplicates skipped.`)
   }
-  if (summary.errors > 0) {
-    parts.push(`${summary.errors} errors.`)
+  if (result.errors && result.errors > 0) {
+    parts.push(`${result.errors} errors.`)
   }
   console.log(parts.join(" "))
 }
@@ -190,104 +167,6 @@ function validateEntry(
   }
 
   return entry
-}
-
-// ---------------------------------------------------------------------------
-// Embedding generation
-// ---------------------------------------------------------------------------
-
-/**
- * Generate embeddings for all texts in batches, with progress reporting.
- *
- * @param texts - Array of texts to embed
- * @param ctx - CLI context
- * @returns Array of embedding vectors in the same order as input
- */
-async function generateEmbeddings(texts: string[], ctx: CliContext): Promise<number[][]> {
-  const allEmbeddings: number[][] = []
-
-  for (let start = 0; start < texts.length; start += EMBEDDING_BATCH_SIZE) {
-    const end = Math.min(start + EMBEDDING_BATCH_SIZE, texts.length)
-    const chunk = texts.slice(start, end)
-
-    progress(`Embedding ${start + 1}–${end} of ${texts.length}...`)
-
-    const embeddings = await embedBatch(chunk, ctx.config.openaiApiKey, ctx.config.embeddingModel)
-    allEmbeddings.push(...embeddings)
-  }
-
-  return allEmbeddings
-}
-
-// ---------------------------------------------------------------------------
-// Insertion with dedup
-// ---------------------------------------------------------------------------
-
-/**
- * Insert entries with dedup checking, matching the MCP server's
- * remember tool behavior.
- *
- * @param entries - Validated import entries
- * @param embeddings - Pre-computed embeddings (same order as entries)
- * @param identity - Parsed agent identity for attribution
- * @param ctx - CLI context
- * @returns Summary of imported, skipped, and errored entries
- */
-async function insertWithDedup(
-  entries: ImportEntry[],
-  embeddings: number[][],
-  identity: ReturnType<typeof parseAgentId>,
-  ctx: CliContext,
-): Promise<ImportSummary> {
-  let imported = 0
-  let skipped = 0
-  let errors = 0
-
-  for (let i = 0; i < entries.length; i++) {
-    const entry = entries[i] as ImportEntry
-    const embedding = embeddings[i] as number[]
-
-    if ((i + 1) % 50 === 0 || i === entries.length - 1) {
-      progress(`Inserting ${i + 1} of ${entries.length}...`)
-    }
-
-    try {
-      // Check for near-duplicates
-      const duplicates = await callDedupCheck(ctx.db, {
-        projectId: ctx.config.projectId,
-        embedding,
-        threshold: ctx.config.dedupThreshold,
-      })
-
-      if (duplicates.length > 0) {
-        skipped++
-        continue
-      }
-
-      // Insert new memory
-      const effectiveImportance = entry.importance ?? "normal"
-
-      await insertMemory(ctx.db, {
-        project_id: ctx.config.projectId,
-        content: entry.content,
-        embedding,
-        created_by: identity.createdBy,
-        engineer: identity.engineer,
-        agent_type: identity.agentType,
-        repo: entry.repo ?? null,
-        tags: entry.tags,
-        importance: effectiveImportance,
-        pinned: effectiveImportance === "critical",
-      })
-
-      imported++
-    } catch (error) {
-      progress(`Error on entry ${i + 1}: ${error instanceof Error ? error.message : String(error)}`)
-      errors++
-    }
-  }
-
-  return { imported, skipped, errors }
 }
 
 // ---------------------------------------------------------------------------

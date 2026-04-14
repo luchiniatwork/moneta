@@ -379,6 +379,9 @@ Phase 5: CLI Write
     └──────────────────┐
                        ▼
                 Phase 7: Ops & Hardening
+                        │
+                        ▼
+                Phase 8: REST API Server
 ```
 
 **Critical path:** Phases 1 → 2 → 3 → 7 (4 days to production
@@ -386,6 +389,61 @@ MCP server).
 
 **Parallelizable:** Phases 4-5 (CLI) and Phase 6 (TUI) can be
 built concurrently by different engineers after Phase 3 is done.
+
+---
+
+## Phase 8: REST API Server
+
+**Goal:** Centralize all database and embedding access behind a REST API.
+MCP server and CLI become thin HTTP clients.
+
+**Estimated effort:** 3 days (1 for server + client, 1 for refactors, 1 for Docker + docs)
+
+### 8.1 API Server Package
+- [x] Scaffold `packages/api-server/` (package.json, tsconfig)
+- [x] Implement Hono app factory with middleware (auth, agent-id, error-handler)
+- [x] Implement routes (remember, recall, memories CRUD, lifecycle, stats, admin, health)
+- [x] Implement handlers (remember, recall, correct, import, stats)
+- [x] Define request/response types with Zod schemas
+- [x] Write handler unit tests
+
+### 8.2 API Client Package
+- [x] Scaffold `packages/api-client/` (package.json, tsconfig)
+- [x] Define API contract types (Memory, RecallResult, etc.)
+- [x] Implement `createClient()` factory with all methods
+- [x] Implement `ApiError` class
+- [x] Write client unit tests
+
+### 8.3 MCP Server Refactor
+- [x] Update dependencies (add api-client, keep shared for config only)
+- [x] Refactor index.ts: API client instead of DB connection
+- [x] Refactor server.ts: ServerDeps uses `client: MonetaClient`
+- [x] Simplify all tool handlers to delegate to API client
+- [x] Update tests to mock MonetaClient
+
+### 8.4 CLI Refactor
+- [x] Update dependencies (add api-client, remove kysely)
+- [x] Refactor context.ts: API client instead of DB connection
+- [x] Refactor resolve.ts: use client.getMemory / client.resolvePrefix
+- [x] Refactor all commands to use API client
+- [x] Refactor all TUI hooks to use API client
+- [x] Update convert.ts for API types (camelCase, ISO string dates)
+
+### 8.5 Shared Package Updates
+- [x] Add `apiUrl`, `apiKey` to Config type
+- [x] Update `validateConfig` with `requireDatabase`, `requireApiUrl` modes
+- [x] Add `getStats()`, `getCounts()` to db.ts
+- [x] Add `MemoryStats`, `MemoryCounts` types
+
+### 8.6 Docker & Infrastructure
+- [x] Create Dockerfile (multi-stage Bun build)
+- [x] Create docker-compose.yml (API server + PostgreSQL)
+- [x] Create .dockerignore
+
+### 8.7 Documentation
+- [x] Update README.md (architecture diagram, config, project structure)
+- [x] Update AGENTS.md (monorepo structure, build commands)
+- [x] Update TODO.md (this phase)
 
 ---
 

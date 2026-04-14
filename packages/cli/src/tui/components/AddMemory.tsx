@@ -1,4 +1,4 @@
-import type { Importance } from "@moneta/shared"
+import type { Importance } from "@moneta/api-client"
 import { Box, Text, useInput } from "ink"
 import TextInput from "ink-text-input"
 import { useState } from "react"

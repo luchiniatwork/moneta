@@ -17,42 +17,16 @@ export interface ExportOptions {
 /**
  * Execute the `moneta export` command.
  *
- * Dumps memories as JSON to stdout. By default exports only active
- * memories; use `--all` to include archived entries. The raw
- * embedding vector is excluded from the output.
+ * Dumps memories as JSON to stdout via the API. By default exports
+ * only active memories; use `--all` to include archived entries.
  *
  * @param options - CLI flag values
- * @param ctx - CLI context with config and database
+ * @param ctx - CLI context with config and API client
  */
 export async function handleExport(options: ExportOptions, ctx: CliContext): Promise<void> {
-  let query = ctx.db
-    .selectFrom("project_memory")
-    .select([
-      "id",
-      "project_id",
-      "content",
-      "created_by",
-      "engineer",
-      "agent_type",
-      "repo",
-      "tags",
-      "importance",
-      "pinned",
-      "archived",
-      "created_at",
-      "updated_at",
-      "last_accessed_at",
-      "access_count",
-    ])
-    .where("project_id", "=", ctx.config.projectId)
+  const memories = await ctx.client.exportMemories({
+    archived: options.all ? "all" : false,
+  })
 
-  if (!options.all) {
-    query = query.where("archived", "=", false)
-  }
-
-  query = query.orderBy("created_at", "desc")
-
-  const rows = await query.execute()
-
-  printJson(rows)
+  printJson(memories)
 }

@@ -1,6 +1,4 @@
-import type { MemoryRow } from "@moneta/shared"
-import { listMemories } from "@moneta/shared"
-import { sql } from "kysely"
+import type { Memory } from "@moneta/api-client"
 import type { CliContext } from "../context.ts"
 import { age, formatTags, pc, printJson, printTable, shortId, truncate } from "../format.ts"
 
@@ -32,17 +30,14 @@ export interface ListOptions {
  * a footer showing total counts.
  *
  * @param options - CLI flag values
- * @param ctx - CLI context with config and database
+ * @param ctx - CLI context with config and API client
  */
 export async function handleList(options: ListOptions, ctx: CliContext): Promise<void> {
-  const { config, db } = ctx
-
   const limit = options.recent ? Number.parseInt(options.recent, 10) : 20
   const tags = options.tags ? options.tags.split(",").map((t) => t.trim()) : undefined
 
-  // Fetch filtered memories
-  const rows = await listMemories(db, {
-    projectId: config.projectId,
+  // Fetch filtered memories via API
+  const { memories } = await ctx.client.listMemories({
     limit,
     agent: options.agent,
     engineer: options.engineer,
@@ -54,56 +49,31 @@ export async function handleList(options: ListOptions, ctx: CliContext): Promise
   })
 
   // Fetch total counts for the footer
-  const counts = await fetchCounts(ctx)
+  const counts = await ctx.client.getCounts()
 
   // Output
   if (options.json) {
-    printJson({ memories: rows, ...counts })
+    printJson({ memories, ...counts })
     return
   }
 
-  if (rows.length === 0) {
+  if (memories.length === 0) {
     console.log(pc.dim("No memories found matching the filters."))
     return
   }
 
-  printMemoryTable(rows)
+  printMemoryTable(memories)
   console.log()
   console.log(
-    pc.dim(`${rows.length} of ${counts.active} active memories (${counts.archived} archived)`),
+    pc.dim(`${memories.length} of ${counts.active} active memories (${counts.archived} archived)`),
   )
-}
-
-// ---------------------------------------------------------------------------
-// Count queries
-// ---------------------------------------------------------------------------
-
-interface MemoryCounts {
-  active: number
-  archived: number
-}
-
-async function fetchCounts(ctx: CliContext): Promise<MemoryCounts> {
-  const result = await sql<{ active: string; archived: string }>`
-    SELECT
-      COUNT(*) FILTER (WHERE NOT archived) AS active,
-      COUNT(*) FILTER (WHERE archived) AS archived
-    FROM project_memory
-    WHERE project_id = ${ctx.config.projectId}
-  `.execute(ctx.db)
-
-  const row = result.rows[0]
-  return {
-    active: Number(row?.active ?? 0),
-    archived: Number(row?.archived ?? 0),
-  }
 }
 
 // ---------------------------------------------------------------------------
 // Formatting
 // ---------------------------------------------------------------------------
 
-function printMemoryTable(rows: MemoryRow[]): void {
+function printMemoryTable(memories: Memory[]): void {
   const columns = [
     { label: "ID", width: 6 },
     { label: "Content", width: 40 },
@@ -113,13 +83,13 @@ function printMemoryTable(rows: MemoryRow[]): void {
     { label: "Age", width: 5 },
   ]
 
-  const tableRows = rows.map((r) => [
-    shortId(r.id),
-    truncate(r.content, 40),
-    r.created_by,
-    formatTags(r.tags),
-    r.pinned ? "yes" : "no",
-    age(r.created_at),
+  const tableRows = memories.map((m) => [
+    shortId(m.id),
+    truncate(m.content, 40),
+    m.createdBy,
+    formatTags(m.tags),
+    m.pinned ? "yes" : "no",
+    age(new Date(m.createdAt)),
   ])
 
   console.log()

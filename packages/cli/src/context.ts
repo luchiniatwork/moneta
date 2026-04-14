@@ -1,5 +1,7 @@
-import type { Config, MonetaDb } from "@moneta/shared"
-import { createDb, loadConfig, validateConfig } from "@moneta/shared"
+import type { MonetaClient } from "@moneta/api-client"
+import { createClient } from "@moneta/api-client"
+import type { Config } from "@moneta/shared"
+import { loadConfig, validateConfig } from "@moneta/shared"
 
 // ---------------------------------------------------------------------------
 // CLI Context
@@ -9,22 +11,22 @@ import { createDb, loadConfig, validateConfig } from "@moneta/shared"
 export interface CliContext {
   /** Loaded and validated configuration */
   config: Config
-  /** Kysely database instance */
-  db: MonetaDb
+  /** Moneta API client */
+  client: MonetaClient
 }
 
 /**
- * Bootstrap the CLI: load config, validate, and connect to the database.
+ * Bootstrap the CLI: load config, validate, and create the API client.
  *
  * Exits with code 1 if configuration is invalid (missing required fields).
- * The CLI does not require `agentId` — only the MCP server does.
+ * The CLI requires `apiUrl` to connect to the Moneta REST API server.
  *
- * @returns CLI context with config and database connection
+ * @returns CLI context with config and API client
  */
 export async function createContext(): Promise<CliContext> {
   const config = loadConfig()
 
-  const errors = validateConfig(config)
+  const errors = validateConfig(config, { requireDatabase: false, requireApiUrl: true })
   if (errors.length > 0) {
     for (const error of errors) {
       console.error(`[moneta] ${error}`)
@@ -32,16 +34,23 @@ export async function createContext(): Promise<CliContext> {
     process.exit(1)
   }
 
-  const db = createDb(config.databaseUrl)
+  const client = createClient({
+    baseUrl: config.apiUrl as string,
+    apiKey: config.apiKey,
+    agentId: config.agentId,
+  })
 
-  return { config, db }
+  return { config, client }
 }
 
 /**
- * Gracefully shut down the CLI context by destroying the database connection.
+ * Gracefully shut down the CLI context.
  *
- * @param ctx - CLI context to shut down
+ * No cleanup is needed — the HTTP client has no persistent connections.
+ * Kept as a no-op for backwards compatibility with the command pattern.
+ *
+ * @param _ctx - CLI context (unused)
  */
-export async function destroyContext(ctx: CliContext): Promise<void> {
-  await ctx.db.destroy()
+export async function destroyContext(_ctx: CliContext): Promise<void> {
+  // No cleanup needed — HTTP client has no persistent connections
 }

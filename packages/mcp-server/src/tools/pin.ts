@@ -1,5 +1,4 @@
-import type { MonetaDb } from "@moneta/shared"
-import { getMemoryById, updateMemory } from "@moneta/shared"
+import type { MonetaClient } from "@moneta/api-client"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -12,7 +11,7 @@ export interface PinParams {
 
 /** Dependencies injected into the pin handler. */
 export interface PinDeps {
-  db: MonetaDb
+  client: MonetaClient
 }
 
 /** Result returned from the pin handler. */
@@ -28,23 +27,19 @@ export interface PinResult {
 /**
  * Pin a memory so it is never archived.
  *
- * Validates that the memory exists, then sets `pinned = true`.
+ * Delegates to the API client which validates the memory exists
+ * and sets `pinned = true`.
  *
- * @param deps - Injected dependencies (db)
+ * @param deps - Injected dependencies (client)
  * @param params - Tool parameters from the agent
  * @returns The pinned memory ID and status
- * @throws Error if the memory is not found
+ * @throws Error if the memory is not found or the API request fails
  */
 export async function handlePin(deps: PinDeps, params: PinParams): Promise<PinResult> {
-  const { db } = deps
+  const { client } = deps
   const { memory_id: memoryId } = params
 
-  const existing = await getMemoryById(db, memoryId)
-  if (!existing) {
-    throw new Error(`Memory not found: ${memoryId}`)
-  }
-
-  await updateMemory(db, memoryId, { pinned: true })
+  await client.pin(memoryId)
 
   return { id: memoryId, pinned: true }
 }

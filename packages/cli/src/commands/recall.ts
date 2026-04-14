@@ -1,5 +1,4 @@
-import type { RecallResult } from "@moneta/shared"
-import { callRecall, callTouchMemories, embed, updateMemory } from "@moneta/shared"
+import type { RecallResult } from "@moneta/api-client"
 import type { CliContext } from "../context.ts"
 import { pc, printJson, printTable, relativeTime, truncate } from "../format.ts"
 
@@ -26,64 +25,44 @@ export interface RecallOptions {
 /**
  * Execute the `moneta recall <question>` command.
  *
- * Performs semantic search by embedding the question, querying the database,
- * touching returned memories (resetting their archival clock), and optionally
- * promoting archived memories back to active.
+ * Performs semantic search via the API. The server handles embedding,
+ * querying, touch updates, and archived-memory promotion.
  *
  * @param question - Natural language search question
  * @param options - CLI flag values
- * @param ctx - CLI context with config and database
+ * @param ctx - CLI context with config and API client
  */
 export async function handleRecall(
   question: string,
   options: RecallOptions,
   ctx: CliContext,
 ): Promise<void> {
-  const { config, db } = ctx
-
-  const limit = options.limit ? Number.parseInt(options.limit, 10) : config.searchLimit
-  const threshold = options.threshold
-    ? Number.parseFloat(options.threshold)
-    : config.searchThreshold
+  const limit = options.limit ? Number.parseInt(options.limit, 10) : ctx.config.searchLimit
   const includeArchived = options.archived ?? false
   const tags = options.tags ? options.tags.split(",").map((t) => t.trim()) : undefined
 
-  // Generate embedding for the question
-  const embedding = await embed(question, config.openaiApiKey, config.embeddingModel)
-
-  // Semantic search
-  const results = await callRecall(db, {
-    projectId: config.projectId,
-    embedding,
+  // Semantic search via API
+  const results = await ctx.client.recall({
+    question,
+    scope: {
+      agent: options.agent,
+      engineer: options.engineer,
+      repo: options.repo,
+      tags,
+    },
     limit,
-    threshold,
     includeArchived,
-    agent: options.agent,
-    engineer: options.engineer,
-    repo: options.repo,
-    tags,
   })
-
-  // Touch all returned memories (bump access timestamps)
-  const ids = results.map((r) => r.id)
-  if (ids.length > 0) {
-    await callTouchMemories(db, ids)
-  }
-
-  // Promote archived memories back to active
-  if (includeArchived) {
-    const archivedResults = results.filter((r) => r.archived)
-    for (const result of archivedResults) {
-      await updateMemory(db, result.id, { archived: false })
-      result.archived = false
-    }
-  }
 
   // Output
   if (options.json) {
     printJson(results)
     return
   }
+
+  const threshold = options.threshold
+    ? Number.parseFloat(options.threshold)
+    : ctx.config.searchThreshold
 
   if (results.length === 0) {
     console.log(pc.dim(`No results for "${question}" (threshold: ${threshold.toFixed(2)})`))
@@ -116,7 +95,7 @@ function printRecallResults(results: RecallResult[]): void {
       r.similarity.toFixed(2),
       content,
       r.createdBy,
-      relativeTime(r.lastAccessedAt),
+      relativeTime(new Date(r.lastAccessedAt)),
     ]
   })
 

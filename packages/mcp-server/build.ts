@@ -14,17 +14,14 @@ const SHEBANG = "#!/usr/bin/env node\n"
 /**
  * npm packages to keep as external imports (installed at runtime via
  * `dependencies` in package.json). Everything else — including the
- * workspace package `@moneta/shared` — is bundled inline.
+ * workspace packages `@moneta/shared` and `@moneta/api-client` — is
+ * bundled inline.
  */
 const EXTERNAL = [
   "@modelcontextprotocol/sdk",
   "@modelcontextprotocol/sdk/server/mcp",
   "@modelcontextprotocol/sdk/server/stdio",
   "@modelcontextprotocol/sdk/types",
-  "kysely",
-  "kysely-postgres-js",
-  "openai",
-  "postgres",
   "zod",
 ]
 

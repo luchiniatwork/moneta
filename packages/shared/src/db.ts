@@ -5,7 +5,9 @@ import type {
   Database,
   DedupMatch,
   ListMemoriesParams,
+  MemoryCounts,
   MemoryRow,
+  MemoryStats,
   MemoryUpdate,
   NewMemory,
   RecallResult,
@@ -299,6 +301,210 @@ export async function callArchiveStale(
   `.execute(db)
 
   return Number(result.rows[0]?.archive_stale ?? 0)
+}
+
+// ---------------------------------------------------------------------------
+// Statistics
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch aggregate memory counts for a project.
+ *
+ * @param db - Kysely database instance
+ * @param projectId - Project identifier
+ * @returns Active, archived, and pinned counts
+ */
+export async function getCounts(db: Kysely<Database>, projectId: string): Promise<MemoryCounts> {
+  const result = await sql<{
+    active: string
+    archived: string
+    pinned: string
+  }>`
+    SELECT
+      COUNT(*) FILTER (WHERE NOT archived) AS active,
+      COUNT(*) FILTER (WHERE archived)     AS archived,
+      COUNT(*) FILTER (WHERE pinned)       AS pinned
+    FROM project_memory
+    WHERE project_id = ${projectId}
+  `.execute(db)
+
+  const row = result.rows[0]
+  return {
+    active: Number(row?.active ?? 0),
+    archived: Number(row?.archived ?? 0),
+    pinned: Number(row?.pinned ?? 0),
+  }
+}
+
+/**
+ * Gather aggregate memory statistics from the database.
+ *
+ * Runs multiple independent queries in parallel for efficiency.
+ *
+ * @param db - Kysely database instance
+ * @param projectId - Project identifier
+ * @returns Full statistics dashboard data
+ */
+export async function getStats(db: Kysely<Database>, projectId: string): Promise<MemoryStats> {
+  const [counts, byEngineer, byRepo, topTags, archivalMetrics, mostAccessed] = await Promise.all([
+    fetchStatsCounts(db, projectId),
+    fetchByEngineer(db, projectId),
+    fetchByRepo(db, projectId),
+    fetchTopTags(db, projectId),
+    fetchArchivalMetrics(db, projectId),
+    fetchMostAccessed(db, projectId),
+  ])
+
+  return {
+    ...counts,
+    byEngineer,
+    byRepo,
+    topTags,
+    ...archivalMetrics,
+    mostAccessed,
+  }
+}
+
+async function fetchStatsCounts(
+  db: Kysely<Database>,
+  projectId: string,
+): Promise<{ total: number; active: number; archived: number; pinned: number }> {
+  const result = await sql<{
+    total: string
+    active: string
+    archived: string
+    pinned: string
+  }>`
+    SELECT
+      COUNT(*)                                  AS total,
+      COUNT(*) FILTER (WHERE NOT archived)      AS active,
+      COUNT(*) FILTER (WHERE archived)          AS archived,
+      COUNT(*) FILTER (WHERE pinned)            AS pinned
+    FROM project_memory
+    WHERE project_id = ${projectId}
+  `.execute(db)
+
+  const row = result.rows[0]
+  return {
+    total: Number(row?.total ?? 0),
+    active: Number(row?.active ?? 0),
+    archived: Number(row?.archived ?? 0),
+    pinned: Number(row?.pinned ?? 0),
+  }
+}
+
+async function fetchByEngineer(
+  db: Kysely<Database>,
+  projectId: string,
+): Promise<Array<{ engineer: string; count: number; pinned: number }>> {
+  const result = await sql<{ engineer: string; count: string; pinned: string }>`
+    SELECT
+      COALESCE(engineer, 'auto') AS engineer,
+      COUNT(*)                   AS count,
+      COUNT(*) FILTER (WHERE pinned) AS pinned
+    FROM project_memory
+    WHERE project_id = ${projectId} AND NOT archived
+    GROUP BY COALESCE(engineer, 'auto')
+    ORDER BY count DESC
+  `.execute(db)
+
+  return result.rows.map((r) => ({
+    engineer: String(r.engineer),
+    count: Number(r.count),
+    pinned: Number(r.pinned),
+  }))
+}
+
+async function fetchByRepo(
+  db: Kysely<Database>,
+  projectId: string,
+): Promise<Array<{ repo: string; count: number }>> {
+  const result = await sql<{ repo: string; count: string }>`
+    SELECT
+      COALESCE(repo, '(no repo)') AS repo,
+      COUNT(*)                    AS count
+    FROM project_memory
+    WHERE project_id = ${projectId} AND NOT archived
+    GROUP BY COALESCE(repo, '(no repo)')
+    ORDER BY count DESC
+  `.execute(db)
+
+  return result.rows.map((r) => ({
+    repo: String(r.repo),
+    count: Number(r.count),
+  }))
+}
+
+async function fetchTopTags(
+  db: Kysely<Database>,
+  projectId: string,
+): Promise<Array<{ tag: string; count: number }>> {
+  const result = await sql<{ tag: string; count: string }>`
+    SELECT
+      unnest(tags) AS tag,
+      COUNT(*)     AS count
+    FROM project_memory
+    WHERE project_id = ${projectId} AND NOT archived
+    GROUP BY tag
+    ORDER BY count DESC
+    LIMIT 10
+  `.execute(db)
+
+  return result.rows.map((r) => ({
+    tag: String(r.tag),
+    count: Number(r.count),
+  }))
+}
+
+async function fetchArchivalMetrics(
+  db: Kysely<Database>,
+  projectId: string,
+): Promise<{ approachingStale: number; archivedLast7Days: number; createdToday: number }> {
+  const result = await sql<{
+    approaching_stale: string
+    archived_last_7_days: string
+    created_today: string
+  }>`
+    SELECT
+      COUNT(*) FILTER (
+        WHERE NOT pinned AND NOT archived
+          AND last_accessed_at < now() - INTERVAL '20 days'
+      ) AS approaching_stale,
+      COUNT(*) FILTER (
+        WHERE archived AND updated_at > now() - INTERVAL '7 days'
+      ) AS archived_last_7_days,
+      COUNT(*) FILTER (
+        WHERE created_at > date_trunc('day', now())
+      ) AS created_today
+    FROM project_memory
+    WHERE project_id = ${projectId}
+  `.execute(db)
+
+  const row = result.rows[0]
+  return {
+    approachingStale: Number(row?.approaching_stale ?? 0),
+    archivedLast7Days: Number(row?.archived_last_7_days ?? 0),
+    createdToday: Number(row?.created_today ?? 0),
+  }
+}
+
+async function fetchMostAccessed(
+  db: Kysely<Database>,
+  projectId: string,
+): Promise<Array<{ id: string; content: string; accessCount: number }>> {
+  const result = await sql<{ id: string; content: string; access_count: string }>`
+    SELECT id, content, access_count
+    FROM project_memory
+    WHERE project_id = ${projectId} AND NOT archived
+    ORDER BY access_count DESC
+    LIMIT 3
+  `.execute(db)
+
+  return result.rows.map((r) => ({
+    id: String(r.id),
+    content: String(r.content),
+    accessCount: Number(r.access_count),
+  }))
 }
 
 // ---------------------------------------------------------------------------

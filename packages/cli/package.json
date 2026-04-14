@@ -31,18 +31,18 @@
     "cli"
   ],
   "dependencies": {
+
     "commander": "^13.1.0",
     "ink": "^5.2.1",
     "ink-spinner": "^5.0.0",
     "ink-text-input": "^6.0.0",
-    "kysely": "^0.28.3",
-    "kysely-postgres-js": "^2.0.0",
-    "openai": "^4.86.0",
+
     "picocolors": "^1.1.1",
     "postgres": "^3.4.7",
     "react": "^18.3.1"
   },
   "devDependencies": {
+    "@moneta/api-client": "workspace:*",
     "@moneta/shared": "workspace:*",
     "@types/react": "^18.3.18"
   }

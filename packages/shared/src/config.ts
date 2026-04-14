@@ -15,6 +15,8 @@ interface ConfigFile {
   search_threshold?: number
   search_limit?: number
   max_content_length?: number
+  api_url?: string
+  api_key?: string
 }
 
 const DEFAULTS = {
@@ -89,35 +91,58 @@ export function loadConfig(overrides?: Partial<Config>): Config {
       toInt(env.MONETA_MAX_CONTENT_LENGTH) ??
       file.max_content_length ??
       DEFAULTS.maxContentLength,
+    apiUrl: overrides?.apiUrl ?? env.MONETA_API_URL ?? file.api_url ?? undefined,
+    apiKey: overrides?.apiKey ?? env.MONETA_API_KEY ?? file.api_key ?? undefined,
   }
 
   return config
 }
 
 /**
+ * Validation options controlling which fields are required.
+ *
+ * - `requireAgentId` — requires MONETA_AGENT_ID (MCP server)
+ * - `requireDatabase` — requires databaseUrl + openaiApiKey (api-server).
+ *   When `false`, databaseUrl and openaiApiKey are not validated, allowing
+ *   clients (CLI, MCP server) that talk to the REST API to skip them.
+ * - `requireApiUrl` — requires apiUrl (clients that talk to the REST API)
+ */
+export interface ValidateConfigOpts {
+  requireAgentId?: boolean
+  requireDatabase?: boolean
+  requireApiUrl?: boolean
+}
+
+/**
  * Validate that all required config fields are present.
  * Returns an array of error messages (empty = valid).
+ *
+ * By default, `requireDatabase` is `true` for backwards compatibility.
  */
-export function validateConfig(config: Config, opts: { requireAgentId?: boolean } = {}): string[] {
+export function validateConfig(config: Config, opts: ValidateConfigOpts = {}): string[] {
   const errors: string[] = []
+  const requireDatabase = opts.requireDatabase ?? true
 
   if (!config.projectId) {
     errors.push(
       "Missing required config: projectId (set MONETA_PROJECT_ID or project_id in config file)",
     )
   }
-  if (!config.databaseUrl) {
+  if (requireDatabase && !config.databaseUrl) {
     errors.push(
       "Missing required config: databaseUrl (set MONETA_DATABASE_URL or database_url in config file)",
     )
   }
-  if (!config.openaiApiKey) {
+  if (requireDatabase && !config.openaiApiKey) {
     errors.push(
       "Missing required config: openaiApiKey (set OPENAI_API_KEY or openai_api_key in config file)",
     )
   }
   if (opts.requireAgentId && !config.agentId) {
     errors.push("Missing required config: agentId (set MONETA_AGENT_ID or agent_id in config file)")
+  }
+  if (opts.requireApiUrl && !config.apiUrl) {
+    errors.push("Missing required config: apiUrl (set MONETA_API_URL or api_url in config file)")
   }
 
   return errors

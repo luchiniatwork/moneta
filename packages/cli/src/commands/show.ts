@@ -1,4 +1,4 @@
-import type { MemoryRow } from "@moneta/shared"
+import type { Memory } from "@moneta/api-client"
 import type { CliContext } from "../context.ts"
 import { pc, printJson, printKeyValue, relativeTime } from "../format.ts"
 import { resolveMemory } from "../resolve.ts"
@@ -24,7 +24,7 @@ export interface ShowOptions {
  *
  * @param id - Full UUID or short prefix
  * @param options - CLI flag values
- * @param ctx - CLI context with config and database
+ * @param ctx - CLI context with config and API client
  */
 export async function handleShow(id: string, options: ShowOptions, ctx: CliContext): Promise<void> {
   const memory = await resolveMemory(id, ctx)
@@ -41,28 +41,27 @@ export async function handleShow(id: string, options: ShowOptions, ctx: CliConte
 // Formatting
 // ---------------------------------------------------------------------------
 
-function printMemoryDetail(memory: MemoryRow): void {
+function printMemoryDetail(memory: Memory): void {
   console.log()
   console.log(`  ${pc.bold("Memory")} ${memory.id}`)
   console.log(`  ${pc.dim("─".repeat(45))}`)
 
+  const lastAccessed = new Date(memory.lastAccessedAt)
+
   const pairs: [string, string][] = [
     ["Content:", memory.content],
-    ["Created by:", memory.created_by],
+    ["Created by:", memory.createdBy],
     ["Engineer:", memory.engineer ?? pc.dim("(none)")],
-    ["Agent type:", memory.agent_type ?? pc.dim("(none)")],
+    ["Agent type:", memory.agentType ?? pc.dim("(none)")],
     ["Repo:", memory.repo ?? pc.dim("(none)")],
     ["Tags:", memory.tags.length > 0 ? memory.tags.join(", ") : pc.dim("(none)")],
     ["Importance:", formatImportance(memory.importance)],
     ["Pinned:", memory.pinned ? pc.yellow("yes") : "no"],
     ["", ""],
-    ["Created:", formatTimestamp(memory.created_at)],
-    ["Updated:", formatTimestamp(memory.updated_at)],
-    [
-      "Last access:",
-      `${formatTimestamp(memory.last_accessed_at)} (${relativeTime(memory.last_accessed_at)})`,
-    ],
-    ["Access count:", String(memory.access_count)],
+    ["Created:", formatTimestamp(memory.createdAt)],
+    ["Updated:", formatTimestamp(memory.updatedAt)],
+    ["Last access:", `${formatTimestamp(memory.lastAccessedAt)} (${relativeTime(lastAccessed)})`],
+    ["Access count:", String(memory.accessCount)],
     ["Archived:", memory.archived ? "yes" : "no"],
   ]
 
@@ -70,8 +69,8 @@ function printMemoryDetail(memory: MemoryRow): void {
   console.log()
 }
 
-function formatTimestamp(date: Date): string {
-  return date
+function formatTimestamp(isoString: string): string {
+  return new Date(isoString)
     .toISOString()
     .replace("T", " ")
     .replace(/\.\d+Z$/, " UTC")

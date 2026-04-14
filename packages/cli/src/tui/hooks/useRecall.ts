@@ -1,4 +1,3 @@
-import { callRecall, callTouchMemories, embed, updateMemory } from "@moneta/shared"
 import { useCallback, useState } from "react"
 import { useTuiContext } from "../context.tsx"
 import { fromRecallResult } from "../convert.ts"
@@ -21,12 +20,15 @@ interface UseRecallReturn {
 }
 
 /**
- * Manage semantic recall state: query, embedding, recall, touch, and results.
+ * Manage semantic recall state: query input, API call, and results.
+ *
+ * The API server handles embedding, querying, touch updates, and
+ * archived-memory promotion.
  *
  * @returns Recall state and actions
  */
 export function useRecall(): UseRecallReturn {
-  const { config, db } = useTuiContext()
+  const { client } = useTuiContext()
   const [query, setQuery] = useState("")
   const [results, setResults] = useState<MemoryItem[]>([])
   const [loading, setLoading] = useState(false)
@@ -39,27 +41,7 @@ export function useRecall(): UseRecallReturn {
       setLoading(true)
       setError(null)
       try {
-        const embedding = await embed(q, config.openaiApiKey, config.embeddingModel)
-
-        const recallResults = await callRecall(db, {
-          projectId: config.projectId,
-          embedding,
-          limit: config.searchLimit,
-          threshold: config.searchThreshold,
-        })
-
-        // Bump access timestamps
-        if (recallResults.length > 0) {
-          const ids = recallResults.map((r) => r.id)
-          await callTouchMemories(db, ids)
-
-          // Promote archived memories
-          const archived = recallResults.filter((r) => r.archived)
-          for (const r of archived) {
-            await updateMemory(db, r.id, { archived: false })
-            r.archived = false
-          }
-        }
+        const recallResults = await client.recall({ question: q })
 
         setResults(recallResults.map(fromRecallResult))
         setSelectedIndex(0)
@@ -69,7 +51,7 @@ export function useRecall(): UseRecallReturn {
         setLoading(false)
       }
     },
-    [config, db],
+    [client],
   )
 
   const clearError = useCallback(() => setError(null), [])

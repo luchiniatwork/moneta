@@ -1,4 +1,3 @@
-import { updateMemory } from "@moneta/shared"
 import type { CliContext } from "../context.ts"
 import { shortId } from "../format.ts"
 import { resolveMemory } from "../resolve.ts"
@@ -14,10 +13,10 @@ import { resolveMemory } from "../resolve.ts"
  * automatic archival by the reaper.
  *
  * @param id - Full UUID or short prefix
- * @param ctx - CLI context with config and database
+ * @param ctx - CLI context with config and API client
  */
 export async function handleUnpin(id: string, ctx: CliContext): Promise<void> {
   const memory = await resolveMemory(id, ctx)
-  await updateMemory(ctx.db, memory.id, { pinned: false })
+  await ctx.client.unpin(memory.id)
   console.log(`Unpinned ${shortId(memory.id)}. This memory is now eligible for archival.`)
 }

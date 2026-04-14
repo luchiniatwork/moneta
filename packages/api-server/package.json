@@ -1,0 +1,13 @@
+{
+  "name": "@moneta/api-server",
+  "version": "0.0.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@moneta/shared": "workspace:*",
+    "hono": "^4.7.0",
+    "zod": "^3.25"
+  }
+}
