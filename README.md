@@ -23,6 +23,7 @@
       </ul>
     </li>
     <li><a href="#usage">Usage</a></li>
+    <li><a href="#agent-skills">Agent Skills</a></li>
     <li><a href="#project-structure">Project Structure</a></li>
     <li><a href="#development">Development</a></li>
     <li><a href="#publishing">Publishing</a></li>
@@ -284,6 +285,35 @@ keybindings.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+## Agent Skills
+
+Moneta provides installable [agent skills](https://skills.sh) that teach AI
+coding agents how to use Moneta proactively — recalling relevant memories at
+the start of tasks and remembering discoveries as they work.
+
+Two skills are available, depending on how your agent connects to Moneta:
+
+| Skill                | Interface    | Use when...                                      |
+| -------------------- | ------------ | ------------------------------------------------ |
+| `moneta-memory-mcp`  | MCP tools    | Your agent connects to the Moneta MCP server     |
+| `moneta-memory-cli`  | CLI commands | Your agent runs `moneta` commands via bash        |
+
+### Installing a skill
+
+```sh
+# Interactive — pick your skill and target agent
+npx skills add your-org/moneta
+
+# Install a specific skill to a specific agent
+npx skills add your-org/moneta --skill moneta-memory-mcp --agent opencode
+npx skills add your-org/moneta --skill moneta-memory-cli --agent claude-code
+```
+
+Both skills teach the same proactive memory habits. Choose the one that matches
+your agent's integration method.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ## Project Structure
 
 ```
@@ -292,6 +322,9 @@ moneta/
 │   ├── shared/              # Core library (config, db, embeddings, identity, types)
 │   ├── mcp-server/          # MCP server exposing tools to agents
 │   └── cli/                 # CLI/TUI for human management
+├── agent-skills/            # Installable agent skills (via npx skills add)
+│   ├── moneta-memory-mcp/   # Skill: use Moneta via MCP tools
+│   └── moneta-memory-cli/   # Skill: use Moneta via CLI commands
 ├── supabase/
 │   └── migrations/          # PostgreSQL schema, indexes, functions, cron jobs
 ├── package.json             # Bun workspace root
