@@ -374,47 +374,58 @@ export function App(): React.JSX.Element {
           </>
         )}
 
-        {/* Overlays */}
-        {overlay === "filters" && (
-          <Box position="absolute" marginTop={3} marginLeft={2}>
-            <FilterPanel
-              filters={list.filters}
-              onApply={(f) => {
-                list.setFilters(f)
-                setOverlay("none")
-              }}
-              onCancel={() => setOverlay("none")}
-            />
-          </Box>
-        )}
+        {/* Overlay backdrop + centered container */}
+        {overlay !== "none" && overlay !== "confirm" && (
+          <>
+            {/* Backdrop — clears underlying list content behind positioned overlays */}
+            <Box position="absolute" flexDirection="column">
+              {Array.from({ length: termHeight }).map((_, i) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: rows are static spacer lines
+                <Text key={i}>{" ".repeat(termWidth)}</Text>
+              ))}
+            </Box>
 
-        {overlay === "tags" && selectedItem && (
-          <Box position="absolute" marginTop={3} marginLeft={2}>
-            <TagEditor
-              currentTags={selectedItem.tags}
-              onSave={handleTagsSave}
-              onCancel={() => setOverlay("none")}
-            />
-          </Box>
-        )}
+            {/* Centering container */}
+            <Box
+              position="absolute"
+              width={termWidth}
+              height={termHeight - 2}
+              justifyContent="center"
+              alignItems="center"
+            >
+              {overlay === "filters" && (
+                <FilterPanel
+                  filters={list.filters}
+                  onApply={(f) => {
+                    list.setFilters(f)
+                    setOverlay("none")
+                  }}
+                  onCancel={() => setOverlay("none")}
+                />
+              )}
 
-        {overlay === "add" && (
-          <Box position="absolute" marginTop={3} marginLeft={2}>
-            <AddMemory
-              onSubmit={(params) => {
-                handleRemember(params).catch(() => {
-                  // Errors are surfaced via actions.error state
-                })
-              }}
-              onCancel={() => setOverlay("none")}
-            />
-          </Box>
-        )}
+              {overlay === "tags" && selectedItem && (
+                <TagEditor
+                  currentTags={selectedItem.tags}
+                  onSave={handleTagsSave}
+                  onCancel={() => setOverlay("none")}
+                />
+              )}
 
-        {overlay === "help" && (
-          <Box position="absolute" marginTop={1} marginLeft={1}>
-            <HelpOverlay />
-          </Box>
+              {overlay === "add" && (
+                <AddMemory
+                  onSubmit={(params) => {
+                    handleRemember(params).catch(() => {
+                      // Errors are surfaced via actions.error state
+                    })
+                  }}
+                  onCancel={() => setOverlay("none")}
+                />
+              )}
+
+              {overlay === "help" && <HelpOverlay />}
+            </Box>
+          </>
         )}
       </Box>
 

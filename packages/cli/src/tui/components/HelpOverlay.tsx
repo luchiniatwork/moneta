@@ -11,7 +11,7 @@ import { Box, Text } from "ink"
  */
 export function HelpOverlay(): React.JSX.Element {
   return (
-    <Box flexDirection="column" paddingX={2} paddingY={1}>
+    <Box flexDirection="column" borderStyle="round" paddingX={2} paddingY={1} width={60}>
       <Text bold>Keybindings</Text>
       <Text dimColor>{"─".repeat(50)}</Text>
       <Text> </Text>

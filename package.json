@@ -15,6 +15,7 @@
     "build:cli": "bun packages/cli/build.ts",
     "build:mcp": "bun packages/mcp-server/build.ts",
     "dev:api": "bun run --watch packages/api-server/src/index.ts",
+    "dev:cli": "bun run --watch packages/cli/src/index.ts",
     "db:start": "bunx supabase start",
     "db:stop": "bunx supabase stop",
     "db:reset": "bunx supabase db reset",
