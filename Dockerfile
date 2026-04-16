@@ -2,33 +2,47 @@
 # Moneta API Server — Multi-stage Docker build
 # ---------------------------------------------------------------------------
 
-# Stage 1: Install dependencies
+# Stage 1: Install production dependencies
 FROM oven/bun:1 AS deps
 WORKDIR /app
 
 # Copy workspace root files
 COPY package.json bun.lock ./
 
-# Copy package.json for each workspace package
+# Copy package.json for each workspace package (all must be present for lockfile resolution)
 COPY packages/shared/package.json packages/shared/package.json
 COPY packages/api-server/package.json packages/api-server/package.json
 COPY packages/api-client/package.json packages/api-client/package.json
+COPY packages/mcp-server/package.json packages/mcp-server/package.json
+COPY packages/cli/package.json packages/cli/package.json
 
-# Install production dependencies only
+# Install production dependencies only (carried into the runtime stage)
 RUN bun install --frozen-lockfile --production
 
 # Stage 2: Build / verify
 FROM oven/bun:1 AS build
 WORKDIR /app
 
-COPY --from=deps /app/node_modules node_modules
 COPY package.json bun.lock tsconfig.json ./
+
+# Copy package.json for each workspace package (needed for full install)
+COPY packages/shared/package.json packages/shared/package.json
+COPY packages/api-server/package.json packages/api-server/package.json
+COPY packages/api-client/package.json packages/api-client/package.json
+COPY packages/mcp-server/package.json packages/mcp-server/package.json
+COPY packages/cli/package.json packages/cli/package.json
+
+# Install all dependencies (including devDependencies like typescript)
+RUN bun install --frozen-lockfile
+
 COPY packages/shared packages/shared
 COPY packages/api-server packages/api-server
 COPY packages/api-client packages/api-client
 
-# Type-check to catch errors at build time
-RUN bun run typecheck
+# Type-check only the packages included in this image
+RUN bunx tsc --noEmit -p packages/shared/tsconfig.json \
+ && bunx tsc --noEmit -p packages/api-client/tsconfig.json \
+ && bunx tsc --noEmit -p packages/api-server/tsconfig.json
 
 # Stage 3: Runtime
 FROM oven/bun:1-slim AS runtime
