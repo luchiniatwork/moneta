@@ -1,11 +1,11 @@
 {
-  "name": "@moneta/mcp-server",
+  "name": "@luchiniatwork22/moneta-mcp-server",
   "version": "0.0.1",
   "description": "MCP server for the Moneta shared memory store",
   "type": "module",
   "license": "MIT",
   "bin": {
-    "moneta-mcp-server": "./dist/index.js"
+    "moneta-mcp-server": "dist/index.js"
   },
   "exports": {
     ".": "./dist/index.js"
@@ -32,7 +32,6 @@
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.11.0",
-
     "zod": "^3.25"
   },
   "devDependencies": {

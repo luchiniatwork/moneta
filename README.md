@@ -13,6 +13,7 @@
   <summary>Table of Contents</summary>
   <ol>
     <li><a href="#about-the-project">About The Project</a></li>
+    <li><a href="#quick-start">Quick Start</a></li>
     <li><a href="#built-with">Built With</a></li>
     <li>
       <a href="#getting-started">Getting Started</a>
@@ -26,6 +27,7 @@
     <li><a href="#agent-skills">Agent Skills</a></li>
     <li><a href="#project-structure">Project Structure</a></li>
     <li><a href="#development">Development</a></li>
+    <li><a href="#docker">Docker</a></li>
     <li><a href="#publishing">Publishing</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
   </ol>
@@ -93,6 +95,56 @@ project-scoped memory pool.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+## Quick Start
+
+Get Moneta running in under 5 minutes using Docker Compose and the MCP server
+from npm.
+
+**1. Start the API server and database:**
+
+```sh
+export OPENAI_API_KEY=sk-...        # required for embeddings
+export MONETA_PROJECT_ID=my-project # identifies your project's memory pool
+
+docker compose up -d
+```
+
+This starts a PostgreSQL + pgvector database and the Moneta REST API on
+`http://localhost:3000`. Migrations are applied automatically.
+
+**2. Configure your AI coding agent:**
+
+Add the MCP server to your agent's config (Claude Desktop, Cursor, Windsurf,
+OpenCode, etc.):
+
+```json
+{
+  "mcpServers": {
+    "moneta": {
+      "command": "npx",
+      "args": ["@luchiniatwork22/moneta-mcp-server"],
+      "env": {
+        "MONETA_PROJECT_ID": "my-project",
+        "MONETA_API_URL": "http://localhost:3000/api/v1",
+        "MONETA_AGENT_ID": "alice/code-reviewer"
+      }
+    }
+  }
+}
+```
+
+**3. (Optional) Install the CLI for human access:**
+
+```sh
+npx @luchiniatwork22/moneta-cli recall "How does authentication work?"
+```
+
+That's it. Your agents can now `remember` facts and `recall` them across
+sessions. See [Configuration](#configuration) for all available options and
+[Usage](#usage) for the full tool and command reference.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ## Built With
 
 - [TypeScript](https://www.typescriptlang.org/) — strict mode with
@@ -130,17 +182,21 @@ embedding generation.
 
 #### From npm (end users)
 
+> **Prerequisite:** The CLI and MCP server connect to the Moneta REST API over
+> HTTP. You need a running API server first — see [Quick Start](#quick-start)
+> or [Docker](#docker) for setup options.
+
 Install the CLI globally:
 
 ```sh
-npm install -g @moneta/cli
+npm install -g @luchiniatwork22/moneta-cli
 ```
 
 Or run directly with `npx` / `bunx`:
 
 ```sh
-npx @moneta/cli recall "How does authentication work?"
-bunx @moneta/cli list --recent 10
+npx @luchiniatwork22/moneta-cli recall "How does authentication work?"
+bunx @luchiniatwork22/moneta-cli list --recent 10
 ```
 
 Once installed globally, the command is simply `moneta`:
@@ -153,14 +209,14 @@ moneta list --recent 10
 To set up the MCP server for your AI coding agent:
 
 ```sh
-npx @moneta/mcp-server
+npx @luchiniatwork22/moneta-mcp-server
 ```
 
 #### From source (contributors)
 
 1. Clone the repo
    ```sh
-   git clone https://github.com/your-org/moneta.git
+   git clone https://github.com/luchiniatwork/moneta.git
    cd moneta
    ```
 2. Install dependencies
@@ -252,17 +308,21 @@ server:
   "mcpServers": {
     "moneta": {
       "command": "npx",
-      "args": ["@moneta/mcp-server"],
+      "args": ["@luchiniatwork22/moneta-mcp-server"],
       "env": {
         "MONETA_PROJECT_ID": "my-project",
-        "MONETA_DATABASE_URL": "postgresql://...",
-        "MONETA_AGENT_ID": "alice/code-reviewer",
-        "OPENAI_API_KEY": "sk-..."
+        "MONETA_API_URL": "http://localhost:3000/api/v1",
+        "MONETA_AGENT_ID": "alice/code-reviewer"
       }
     }
   }
 }
 ```
+
+> **Note:** The MCP server connects to the REST API server over HTTP — it does
+> not access the database or OpenAI directly. You must have a running API server
+> (see [Quick Start](#quick-start)) before starting the MCP server. Add
+> `MONETA_API_KEY` to the `env` block if the API server requires authentication.
 
 See [SPEC.md, section 5](SPEC.md#5-mcp-server) for full parameter details and
 behavior.
@@ -321,11 +381,11 @@ Two skills are available, depending on how your agent connects to Moneta:
 
 ```sh
 # Interactive — pick your skill and target agent
-npx skills add your-org/moneta
+npx skills add luchiniatwork/moneta
 
 # Install a specific skill to a specific agent
-npx skills add your-org/moneta --skill moneta-memory-mcp --agent opencode
-npx skills add your-org/moneta --skill moneta-memory-cli --agent claude-code
+npx skills add luchiniatwork/moneta --skill moneta-memory-mcp --agent opencode
+npx skills add luchiniatwork/moneta --skill moneta-memory-cli --agent claude-code
 ```
 
 Both skills teach the same proactive memory habits. Choose the one that matches
@@ -359,17 +419,17 @@ moneta/
 
 ### npm packages
 
-| Package              | npm name             | Binary command       | Description                        |
-| -------------------- | -------------------- | -------------------- | ---------------------------------- |
-| `packages/cli`       | `@moneta/cli`        | `moneta`             | CLI/TUI for human management       |
-| `packages/mcp-server`| `@moneta/mcp-server` | `moneta-mcp-server`  | MCP server for AI coding agents    |
-| `packages/shared`    | —                    | —                    | Internal library, bundled at build  |
+| Package              | npm name                            | Binary command       | Description                        |
+| -------------------- | ----------------------------------- | -------------------- | ---------------------------------- |
+| `packages/cli`       | `@luchiniatwork22/moneta-cli`         | `moneta`             | CLI/TUI for human management       |
+| `packages/mcp-server`| `@luchiniatwork22/moneta-mcp-server`  | `moneta-mcp-server`  | MCP server for AI coding agents    |
+| `packages/shared`    | ---                                 | ---                  | Internal library, bundled at build  |
 
-Packages reference each other via `workspace:*` dependencies. The
-`@moneta/shared` package provides database and embedding access, used only by
-`api-server`. The `@moneta/api-client` package provides an HTTP client used by
-`mcp-server` and `cli` to communicate with the REST API. Both workspace packages
-are bundled inline at build time (not published separately).
+Packages reference each other via `workspace:*` dependencies. The `shared`
+package provides database and embedding access, used only by `api-server`. The
+`api-client` package provides an HTTP client used by `mcp-server` and `cli` to
+communicate with the REST API. Both workspace packages are bundled inline at
+build time (not published separately).
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -404,10 +464,10 @@ bun run db:reset         # reset database and re-run migrations
 
 ### Build system
 
-Both `@moneta/cli` and `@moneta/mcp-server` are built using Bun's bundler.
-Each package has a `build.ts` script that:
+Both `@luchiniatwork22/moneta-cli` and `@luchiniatwork22/moneta-mcp-server` are
+built using Bun's bundler. Each package has a `build.ts` script that:
 
-1. Bundles the package entry point with `@moneta/shared` inlined
+1. Bundles the package entry point with the `shared` package inlined
 2. Externalizes all npm dependencies (installed at runtime by the end user)
 3. Outputs a single `dist/index.js` file with a `#!/usr/bin/env node` shebang
 
@@ -421,45 +481,103 @@ See [AGENTS.md](AGENTS.md) for code style guidelines and conventions.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+## Docker
+
+The API server is published to Docker Hub as
+[`luchiniatwork/moneta-api`](https://hub.docker.com/r/luchiniatwork/moneta-api).
+
+### Pull and run
+
+```sh
+docker pull luchiniatwork/moneta-api
+docker run -d \
+  -p 3000:3000 \
+  -e MONETA_PROJECT_ID=my-project \
+  -e MONETA_DATABASE_URL=postgresql://user:pass@host:5432/dbname \
+  -e OPENAI_API_KEY=sk-... \
+  luchiniatwork/moneta-api
+```
+
+### Docker Compose (API + PostgreSQL)
+
+For a complete local setup with the database included, use the provided
+`docker-compose.yml`:
+
+```sh
+# Set required env vars
+export OPENAI_API_KEY=sk-...
+export MONETA_PROJECT_ID=my-project  # optional, defaults to "my-project"
+
+# Start API server + pgvector database
+docker compose up -d
+
+# Stop services
+docker compose down
+```
+
+The compose file starts a `pgvector/pgvector:pg16` database and the API server
+on port 3000. Migrations are applied automatically on first start. Set
+`MONETA_API_KEY` to require authentication on all API requests.
+
 ## Publishing
 
-Both `@moneta/cli` and `@moneta/mcp-server` are published to the npm registry
-under the `@moneta` scope. The `@moneta/shared` package is **not** published —
-it is bundled into each package at build time.
+Both `@luchiniatwork22/moneta-cli` and `@luchiniatwork22/moneta-mcp-server` are
+published to the npm registry. The `shared` and `api-client` packages are
+**not** published -- they are bundled into each package at build time.
 
-### Prerequisites
+The API server Docker image is published to Docker Hub as
+`luchiniatwork/moneta-api`.
 
-1. You must be a member of the `@moneta` npm organization.
-2. You must be logged in to npm:
-   ```sh
-   npm login
-   ```
+### Automated releases (GitHub Actions)
 
-### Publish workflow
+Pushing a semver tag triggers the
+[release workflow](.github/workflows/release.yml), which:
 
-1. Build the packages:
-   ```sh
-   bun run build
-   ```
-2. Verify what will be published (the `files` field restricts it to `dist/`
-   only):
-   ```sh
-   npm pack --dry-run -w packages/cli
-   npm pack --dry-run -w packages/mcp-server
-   ```
-3. Bump versions as needed:
-   ```sh
-   npm version patch -w packages/cli
-   npm version patch -w packages/mcp-server
-   ```
-4. Publish:
-   ```sh
-   npm publish -w packages/cli
-   npm publish -w packages/mcp-server
-   ```
+1. Runs typecheck, lint, and tests (quality gate)
+2. Builds and publishes both npm packages with the tag version
+3. Builds and pushes the Docker image tagged with the version and `latest`
 
-Both packages have `"publishConfig": { "access": "public" }` so they are
-published publicly by default.
+To create a release:
+
+```sh
+# 1. Commit your changes
+git add -A && git commit -m "prepare release"
+
+# 2. Tag with a semver version
+git tag v1.0.0
+
+# 3. Push the tag — this triggers the release workflow
+git push origin v1.0.0
+```
+
+### Required GitHub secrets
+
+| Secret              | Description                                      |
+| ------------------- | ------------------------------------------------ |
+| `NPM_TOKEN`         | npm access token with publish permission         |
+| `DOCKERHUB_USERNAME` | Docker Hub username                             |
+| `DOCKERHUB_TOKEN`    | Docker Hub access token                         |
+
+### Manual publishing
+
+If you need to publish manually without the CI workflow:
+
+```sh
+# Build
+bun run build
+
+# Verify contents
+npm pack --dry-run -w packages/cli
+npm pack --dry-run -w packages/mcp-server
+
+# Publish
+npm publish -w packages/cli --access public
+npm publish -w packages/mcp-server --access public
+
+# Docker
+docker build -t luchiniatwork/moneta-api .
+docker push luchiniatwork/moneta-api
+```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -484,7 +602,7 @@ See [TODO.md](TODO.md) for the detailed build plan with task breakdowns.
 
 ## License
 
-Distributed under the Unlicense. See [`LICENSE.txt`](LICENSE.txt) for more
+Distributed under the MIT License. See [`LICENSE.txt`](LICENSE.txt) for more
 information.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>

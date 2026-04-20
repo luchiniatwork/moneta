@@ -1,6 +1,7 @@
 {
   "name": "@moneta/monorepo",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "workspaces": [
     "packages/*"
@@ -19,7 +20,7 @@
     "db:start": "bunx supabase start",
     "db:stop": "bunx supabase stop",
     "db:reset": "bunx supabase db reset",
-    "docker:build": "docker build -t moneta-api .",
+    "docker:build": "docker build -t luchiniatwork/moneta-api .",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down"
   },

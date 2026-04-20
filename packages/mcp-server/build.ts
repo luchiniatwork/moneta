@@ -1,4 +1,4 @@
-import { rm } from "node:fs/promises"
+import { chmod, rm } from "node:fs/promises"
 import { dirname, join } from "node:path"
 
 // ---------------------------------------------------------------------------
@@ -48,11 +48,12 @@ if (!result.success) {
   process.exit(1)
 }
 
-// Prepend Node.js shebang so the binary works with `npx @moneta/mcp-server`.
+// Prepend Node.js shebang so the binary works with `npx @luchiniatwork22/moneta-mcp-server`.
 // Strip any shebang that may have survived from the source entry point first.
 const outPath = join(OUT_DIR, OUT_FILE)
 const raw = await Bun.file(outPath).text()
 const stripped = raw.replace(/^#!.*\n/g, "")
 await Bun.write(outPath, SHEBANG + stripped)
+await chmod(outPath, 0o755)
 
 console.log(`✓ MCP server built → ${outPath}`)
