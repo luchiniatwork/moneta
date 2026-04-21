@@ -11,7 +11,8 @@ import { RememberRequestSchema } from "../types.ts"
 /**
  * Create the remember route.
  *
- * Requires `X-Agent-Id` header for agent identity.
+ * Requires `X-Agent-Id` header for agent identity and `X-Project-Id`
+ * header for project scoping (provided by project-id middleware).
  *
  * @param config - Server configuration
  * @param db - Database instance
@@ -38,8 +39,10 @@ export function createRememberRoute(config: Config, db: MonetaDb): Hono {
 
     // biome-ignore lint/suspicious/noExplicitAny: Hono context variable typing
     const identity = (c as any).get("agentIdentity") as AgentIdentity
+    // biome-ignore lint/suspicious/noExplicitAny: Hono context variable typing
+    const projectId = (c as any).get("projectId") as string
     const result = await handleRemember(
-      { config, db, identity },
+      { config, db, identity, projectId },
       {
         content: parsed.data.content,
         tags: parsed.data.tags,

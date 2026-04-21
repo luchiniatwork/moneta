@@ -41,7 +41,12 @@ const BASE_URL = "http://localhost:3000/api/v1"
 let client: MonetaClient
 
 beforeEach(() => {
-  client = createClient({ baseUrl: BASE_URL, apiKey: "test-key", agentId: "alice/reviewer" })
+  client = createClient({
+    baseUrl: BASE_URL,
+    projectId: "test-project",
+    apiKey: "test-key",
+    agentId: "alice/reviewer",
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -61,6 +66,7 @@ describe("remember", () => {
     const [url, opts] = mockFetch.mock.calls[0] as [string, RequestInit]
     expect(url).toBe(`${BASE_URL}/memories/remember`)
     expect(opts.method).toBe("POST")
+    expect(opts.headers).toHaveProperty("X-Project-Id", "test-project")
     expect(opts.headers).toHaveProperty("X-Agent-Id", "alice/reviewer")
     expect(opts.headers).toHaveProperty("Authorization", "Bearer test-key")
     expect(JSON.parse(opts.body as string)).toEqual({ content: "Test fact", tags: ["arch"] })
@@ -227,13 +233,14 @@ describe("error handling", () => {
 
 describe("auth", () => {
   it("omits Authorization header when no apiKey", async () => {
-    const noAuthClient = createClient({ baseUrl: BASE_URL })
+    const noAuthClient = createClient({ baseUrl: BASE_URL, projectId: "test-project" })
     mockFetch.mockImplementation(() => Promise.resolve(jsonResponse({ status: "ok" })))
 
     await noAuthClient.health()
 
     const [, opts] = mockFetch.mock.calls[0] as [string, RequestInit]
     const h = opts.headers as Record<string, string>
+    expect(h["X-Project-Id"]).toBe("test-project")
     expect(h.Authorization).toBeUndefined()
   })
 })
@@ -252,6 +259,7 @@ describe("importMemories", () => {
     const [url, opts] = mockFetch.mock.calls[0] as [string, RequestInit]
     expect(url).toBe(`${BASE_URL}/memories/import`)
     const h = opts.headers as Record<string, string>
+    expect(h["X-Project-Id"]).toBe("test-project")
     expect(h["X-Agent-Id"]).toBe("alice/reviewer")
   })
 })

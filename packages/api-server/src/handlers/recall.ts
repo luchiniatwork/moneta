@@ -17,6 +17,8 @@ export interface RecallHandlerParams {
 export interface RecallHandlerDeps {
   config: Config
   db: MonetaDb
+  /** Project identifier from the X-Project-Id request header */
+  projectId: string
 }
 
 // ---------------------------------------------------------------------------
@@ -39,7 +41,7 @@ export async function handleRecall(
   deps: RecallHandlerDeps,
   params: RecallHandlerParams,
 ): Promise<RecallResult[]> {
-  const { config, db } = deps
+  const { config, db, projectId } = deps
   const { question, scope, includeArchived } = params
   const limit = params.limit ?? config.searchLimit
 
@@ -56,7 +58,7 @@ export async function handleRecall(
 
   // Semantic search via the recall() SQL function
   const results = await callRecall(db, {
-    projectId: config.projectId,
+    projectId,
     embedding,
     limit,
     threshold: config.searchThreshold,

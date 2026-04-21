@@ -24,8 +24,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      MONETA_PROJECT_ID: ${MONETA_PROJECT_ID:-my-project}
-      MONETA_DATABASE_URL: postgresql://moneta:moneta@db:5432/moneta
+      MONETA_DATABASE_URL: ${MONETA_DATABASE_URL:-postgresql://moneta:moneta@db:5432/moneta}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       MONETA_API_KEY: ${MONETA_API_KEY:-}
       MONETA_API_PORT: "3000"

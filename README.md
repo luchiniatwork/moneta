@@ -105,13 +105,14 @@ from npm.
 
 ```sh
 export OPENAI_API_KEY=sk-...        # required for embeddings
-export MONETA_PROJECT_ID=my-project # identifies your project's memory pool
 
 docker compose up -d
 ```
 
 This starts a PostgreSQL + pgvector database and the Moneta REST API on
-`http://localhost:3000`. Migrations are applied automatically.
+`http://localhost:3000`. Migrations are applied automatically. The API server
+is multi-tenant — it does not require a project ID. Clients identify their
+project via the `X-Project-Id` header on each request.
 
 **2. Configure your AI coding agent:**
 
@@ -243,9 +244,12 @@ Moneta reads configuration from environment variables, falling back to
 
 **API Server** (requires database + OpenAI access):
 
+The API server is multi-tenant — it does not require `MONETA_PROJECT_ID`.
+Clients provide the project identifier via the `X-Project-Id` header on each
+request.
+
 | Variable                     | Required | Description                                            |
 | ---------------------------- | -------- | ------------------------------------------------------ |
-| `MONETA_PROJECT_ID`          | yes      | Project identifier (e.g. `"acme-platform"`)            |
 | `MONETA_DATABASE_URL`        | yes      | PostgreSQL connection string                           |
 | `OPENAI_API_KEY`             | yes      | OpenAI API key for embeddings                          |
 | `MONETA_API_PORT`            | no       | Port to listen on (default: `3000`)                    |
@@ -261,12 +265,13 @@ Moneta reads configuration from environment variables, falling back to
 
 | Variable                     | Required | Description                                            |
 | ---------------------------- | -------- | ------------------------------------------------------ |
-| `MONETA_PROJECT_ID`          | yes      | Project identifier (e.g. `"acme-platform"`)            |
+| `MONETA_PROJECT_ID`          | yes      | Project identifier, sent via `X-Project-Id` header     |
 | `MONETA_API_URL`             | yes      | REST API base URL (e.g. `http://localhost:3000/api/v1`)|
 | `MONETA_API_KEY`             | no       | API key if the server requires authentication          |
 | `MONETA_AGENT_ID`            | yes\*    | Agent identity (e.g. `"alice/code-reviewer"`)          |
 
 \*`MONETA_AGENT_ID` is required for the MCP server, not the CLI.
+The CLI also accepts `--project-id <id>` to override `MONETA_PROJECT_ID`.
 
 #### Config file
 
@@ -493,11 +498,13 @@ The API server is published to Docker Hub as
 docker pull luchiniatwork/moneta-api
 docker run -d \
   -p 3000:3000 \
-  -e MONETA_PROJECT_ID=my-project \
   -e MONETA_DATABASE_URL=postgresql://user:pass@host:5432/dbname \
   -e OPENAI_API_KEY=sk-... \
   luchiniatwork/moneta-api
 ```
+
+The API server is multi-tenant — it does not require `MONETA_PROJECT_ID`.
+Clients identify their project via the `X-Project-Id` header on each request.
 
 ### Docker Compose (API + PostgreSQL)
 
@@ -507,7 +514,6 @@ For a complete local setup with the database included, use the provided
 ```sh
 # Set required env vars
 export OPENAI_API_KEY=sk-...
-export MONETA_PROJECT_ID=my-project  # optional, defaults to "my-project"
 
 # Start API server + pgvector database
 docker compose up -d
@@ -572,7 +578,6 @@ Run, a VPS, etc.):
 docker pull luchiniatwork/moneta-api
 docker run -d \
   -p 3000:3000 \
-  -e MONETA_PROJECT_ID=my-project \
   -e MONETA_DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres \
   -e OPENAI_API_KEY=sk-... \
   -e MONETA_API_KEY=your-secret-key \
@@ -581,7 +586,8 @@ docker run -d \
 
 Replace the `MONETA_DATABASE_URL` with your Supabase connection string. The API
 server automatically sets `search_path = moneta, public` on the database
-connection, so no additional configuration is needed.
+connection, so no additional configuration is needed. The server is multi-tenant
+— clients provide their project ID via the `X-Project-Id` header.
 
 ### 3. Connect your agents
 

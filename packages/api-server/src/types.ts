@@ -12,6 +12,7 @@ export type ApiErrorCode =
   | "CONTENT_TOO_LONG"
   | "CONTENT_EMPTY"
   | "UNAUTHORIZED"
+  | "PROJECT_ID_REQUIRED"
   | "AGENT_ID_REQUIRED"
   | "AGENT_ID_INVALID"
   | "EMBEDDING_FAILED"
@@ -161,7 +162,6 @@ export interface ListMemoriesResponse {
 /** Response body for the health endpoint. */
 export interface HealthResponse {
   status: string
-  project: string
   version: string
 }
 

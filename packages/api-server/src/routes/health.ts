@@ -8,16 +8,17 @@ import type { HealthResponse } from "../types.ts"
 /**
  * Create the health check route.
  *
- * @param projectId - The configured project identifier
+ * The health endpoint is project-agnostic — it does not require the
+ * `X-Project-Id` header. It reports server availability only.
+ *
  * @returns Hono app with GET /health
  */
-export function createHealthRoute(projectId: string): Hono {
+export function createHealthRoute(): Hono {
   const app = new Hono()
 
   app.get("/health", (c) => {
     const response: HealthResponse = {
       status: "ok",
-      project: projectId,
       version: "0.0.1",
     }
     return c.json(response)

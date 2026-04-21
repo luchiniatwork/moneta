@@ -42,7 +42,7 @@ export { mapMemoryRow } from "./types.ts"
  */
 async function main(): Promise<void> {
   const config = loadConfig()
-  const errors = validateConfig(config, { requireDatabase: true })
+  const errors = validateConfig(config, { requireProjectId: false, requireDatabase: true })
 
   if (errors.length > 0) {
     for (const error of errors) {
@@ -58,7 +58,6 @@ async function main(): Promise<void> {
   const app = createApp({ config, db, apiKey })
 
   console.error(`[moneta-api] Starting server on port ${port}`)
-  console.error(`[moneta-api] Project: ${config.projectId}`)
   console.error(`[moneta-api] Auth: ${apiKey ? "enabled" : "disabled"}`)
 
   Bun.serve({

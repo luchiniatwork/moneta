@@ -1,4 +1,4 @@
-import type { Config, MemoryStats, MonetaDb } from "@moneta/shared"
+import type { MemoryStats, MonetaDb } from "@moneta/shared"
 import { getStats } from "@moneta/shared"
 
 // ---------------------------------------------------------------------------
@@ -7,8 +7,9 @@ import { getStats } from "@moneta/shared"
 
 /** Dependencies injected into the stats handler. */
 export interface StatsHandlerDeps {
-  config: Config
   db: MonetaDb
+  /** Project identifier from the X-Project-Id request header */
+  projectId: string
 }
 
 // ---------------------------------------------------------------------------
@@ -21,10 +22,10 @@ export interface StatsHandlerDeps {
  * Delegates to the shared `getStats` function which runs multiple
  * parallel queries for efficiency.
  *
- * @param deps - Injected dependencies (config, db)
+ * @param deps - Injected dependencies (db, projectId)
  * @returns Full statistics dashboard data
  */
 export async function handleStats(deps: StatsHandlerDeps): Promise<MemoryStats> {
-  const { config, db } = deps
-  return await getStats(db, config.projectId)
+  const { db, projectId } = deps
+  return await getStats(db, projectId)
 }

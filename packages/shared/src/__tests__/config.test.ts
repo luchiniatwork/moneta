@@ -108,6 +108,31 @@ describe("loadConfig", () => {
 })
 
 describe("validateConfig", () => {
+  const originalEnv = { ...process.env }
+
+  beforeEach(() => {
+    // Clear all MONETA_ env vars before each test so loadConfig() starts clean
+    for (const key of Object.keys(process.env)) {
+      if (key.startsWith("MONETA_") || key === "OPENAI_API_KEY") {
+        delete process.env[key]
+      }
+    }
+  })
+
+  afterEach(() => {
+    // Restore original env
+    for (const key of Object.keys(process.env)) {
+      if (key.startsWith("MONETA_") || key === "OPENAI_API_KEY") {
+        delete process.env[key]
+      }
+    }
+    for (const [key, value] of Object.entries(originalEnv)) {
+      if (key.startsWith("MONETA_") || key === "OPENAI_API_KEY") {
+        process.env[key] = value
+      }
+    }
+  })
+
   it("returns errors for missing required fields", () => {
     const config = loadConfig()
     const errors = validateConfig(config)
@@ -125,6 +150,25 @@ describe("validateConfig", () => {
     })
     const errors = validateConfig(config)
     expect(errors).toEqual([])
+  })
+
+  it("does not require projectId when requireProjectId is false", () => {
+    const config = loadConfig({
+      databaseUrl: "postgresql://localhost:5432/test",
+      openaiApiKey: "sk-test",
+    })
+    const errors = validateConfig(config, { requireProjectId: false })
+    expect(errors).toEqual([])
+  })
+
+  it("still requires projectId by default", () => {
+    const config = loadConfig({
+      databaseUrl: "postgresql://localhost:5432/test",
+      openaiApiKey: "sk-test",
+    })
+    const errors = validateConfig(config)
+    expect(errors.length).toBe(1)
+    expect(errors[0]).toContain("projectId")
   })
 
   it("optionally requires agentId", () => {
@@ -146,6 +190,46 @@ describe("validateConfig", () => {
       agentId: "alice/reviewer",
     })
     const errors = validateConfig(config, { requireAgentId: true })
+    expect(errors).toEqual([])
+  })
+
+  it("skips databaseUrl and openaiApiKey when requireDatabase is false", () => {
+    const config = loadConfig({ projectId: "test" })
+    const errors = validateConfig(config, { requireDatabase: false })
+    expect(errors).toEqual([])
+  })
+
+  it("requires apiUrl when requireApiUrl is true", () => {
+    const config = loadConfig({
+      projectId: "test",
+      databaseUrl: "postgresql://localhost:5432/test",
+      openaiApiKey: "sk-test",
+    })
+    const errors = validateConfig(config, { requireApiUrl: true })
+    expect(errors.length).toBe(1)
+    expect(errors[0]).toContain("apiUrl")
+  })
+
+  it("passes when requireApiUrl is true and apiUrl is present", () => {
+    const config = loadConfig({
+      projectId: "test",
+      databaseUrl: "postgresql://localhost:5432/test",
+      openaiApiKey: "sk-test",
+      apiUrl: "http://localhost:3000/api/v1",
+    })
+    const errors = validateConfig(config, { requireApiUrl: true })
+    expect(errors).toEqual([])
+  })
+
+  it("combines requireProjectId: false and requireDatabase: false for client-only validation", () => {
+    const config = loadConfig({
+      apiUrl: "http://localhost:3000/api/v1",
+    })
+    const errors = validateConfig(config, {
+      requireProjectId: false,
+      requireDatabase: false,
+      requireApiUrl: true,
+    })
     expect(errors).toEqual([])
   })
 })

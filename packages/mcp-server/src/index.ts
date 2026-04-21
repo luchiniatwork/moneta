@@ -35,6 +35,7 @@ async function main(): Promise<void> {
 
   const client = createClient({
     baseUrl: config.apiUrl as string,
+    projectId: config.projectId,
     apiKey: config.apiKey,
     agentId: identity.createdBy,
   })

@@ -36,6 +36,7 @@ export async function createContext(): Promise<CliContext> {
 
   const client = createClient({
     baseUrl: config.apiUrl as string,
+    projectId: config.projectId,
     apiKey: config.apiKey,
     agentId: config.agentId,
   })

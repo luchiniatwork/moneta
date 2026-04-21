@@ -163,7 +163,7 @@ describe("handleRemember", () => {
     mockCallDedupCheck.mockResolvedValueOnce([])
 
     const result = await handleRemember(
-      { config: TEST_CONFIG, db: TEST_DB, identity: TEST_IDENTITY },
+      { config: TEST_CONFIG, db: TEST_DB, identity: TEST_IDENTITY, projectId: "test-project" },
       { content: "Bun is fast" },
     )
 
@@ -180,7 +180,7 @@ describe("handleRemember", () => {
     ])
 
     const result = await handleRemember(
-      { config: TEST_CONFIG, db: TEST_DB, identity: TEST_IDENTITY },
+      { config: TEST_CONFIG, db: TEST_DB, identity: TEST_IDENTITY, projectId: "test-project" },
       { content: "Bun is very fast" },
     )
 
@@ -196,7 +196,7 @@ describe("handleRemember", () => {
     ])
 
     const result = await handleRemember(
-      { config: TEST_CONFIG, db: TEST_DB, identity: TEST_IDENTITY },
+      { config: TEST_CONFIG, db: TEST_DB, identity: TEST_IDENTITY, projectId: "test-project" },
       { content: "Bun is fast", tags: ["runtime"] },
     )
 
@@ -212,7 +212,7 @@ describe("handleRemember", () => {
     mockCallDedupCheck.mockResolvedValueOnce([])
 
     await handleRemember(
-      { config: TEST_CONFIG, db: TEST_DB, identity: TEST_IDENTITY },
+      { config: TEST_CONFIG, db: TEST_DB, identity: TEST_IDENTITY, projectId: "test-project" },
       { content: "Never delete prod DB", importance: "critical" },
     )
 
@@ -227,7 +227,7 @@ describe("handleRemember", () => {
 
     await expect(
       handleRemember(
-        { config: TEST_CONFIG, db: TEST_DB, identity: TEST_IDENTITY },
+        { config: TEST_CONFIG, db: TEST_DB, identity: TEST_IDENTITY, projectId: "test-project" },
         { content: longContent },
       ),
     ).rejects.toThrow("exceeds maximum length")
@@ -250,7 +250,7 @@ describe("handleRecall", () => {
     mockCallRecall.mockResolvedValueOnce([])
 
     const results = await handleRecall(
-      { config: TEST_CONFIG, db: TEST_DB },
+      { config: TEST_CONFIG, db: TEST_DB, projectId: "test-project" },
       { question: "How does X work?" },
     )
 
@@ -279,7 +279,7 @@ describe("handleRecall", () => {
     mockCallRecall.mockResolvedValueOnce(mockResults)
 
     const results = await handleRecall(
-      { config: TEST_CONFIG, db: TEST_DB },
+      { config: TEST_CONFIG, db: TEST_DB, projectId: "test-project" },
       { question: "How does X work?" },
     )
 
@@ -308,7 +308,7 @@ describe("handleRecall", () => {
     mockCallRecall.mockResolvedValueOnce(mockResults)
 
     const results = await handleRecall(
-      { config: TEST_CONFIG, db: TEST_DB },
+      { config: TEST_CONFIG, db: TEST_DB, projectId: "test-project" },
       { question: "Tell me about archived", includeArchived: true },
     )
 
@@ -405,7 +405,7 @@ describe("handleImport", () => {
     mockEmbedBatch.mockResolvedValueOnce([new Array(1536).fill(0.1), new Array(1536).fill(0.2)])
 
     const result = await handleImport(
-      { config: TEST_CONFIG, db: TEST_DB, identity: TEST_IDENTITY },
+      { config: TEST_CONFIG, db: TEST_DB, identity: TEST_IDENTITY, projectId: "test-project" },
       {
         memories: [{ content: "Fact one" }, { content: "Fact two" }],
       },
@@ -427,7 +427,7 @@ describe("handleImport", () => {
     mockEmbedBatch.mockResolvedValueOnce([new Array(1536).fill(0.1), new Array(1536).fill(0.2)])
 
     const result = await handleImport(
-      { config: TEST_CONFIG, db: TEST_DB, identity: TEST_IDENTITY },
+      { config: TEST_CONFIG, db: TEST_DB, identity: TEST_IDENTITY, projectId: "test-project" },
       {
         memories: [{ content: "Duplicate fact" }, { content: "New fact" }],
       },
@@ -439,7 +439,7 @@ describe("handleImport", () => {
 
   it("returns empty result for empty input", async () => {
     const result = await handleImport(
-      { config: TEST_CONFIG, db: TEST_DB, identity: TEST_IDENTITY },
+      { config: TEST_CONFIG, db: TEST_DB, identity: TEST_IDENTITY, projectId: "test-project" },
       { memories: [] },
     )
 
@@ -449,7 +449,7 @@ describe("handleImport", () => {
 
   it("validates content length before embedding", async () => {
     const result = await handleImport(
-      { config: TEST_CONFIG, db: TEST_DB, identity: TEST_IDENTITY },
+      { config: TEST_CONFIG, db: TEST_DB, identity: TEST_IDENTITY, projectId: "test-project" },
       {
         memories: [{ content: "a".repeat(2001) }],
       },
@@ -472,7 +472,7 @@ describe("handleStats", () => {
   })
 
   it("returns stats from shared getStats", async () => {
-    const result = await handleStats({ config: TEST_CONFIG, db: TEST_DB })
+    const result = await handleStats({ db: TEST_DB, projectId: "test-project" })
 
     expect(result.total).toBe(10)
     expect(result.active).toBe(8)

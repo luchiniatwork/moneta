@@ -10,6 +10,9 @@ import { RecallRequestSchema } from "../types.ts"
 /**
  * Create the recall route.
  *
+ * Requires `X-Project-Id` header for project scoping (provided by
+ * project-id middleware).
+ *
  * @param config - Server configuration
  * @param db - Database instance
  * @returns Hono app with POST /memories/recall
@@ -33,8 +36,10 @@ export function createRecallRoute(config: Config, db: MonetaDb): Hono {
       )
     }
 
+    // biome-ignore lint/suspicious/noExplicitAny: Hono context variable typing
+    const projectId = (c as any).get("projectId") as string
     const results = await handleRecall(
-      { config, db },
+      { config, db, projectId },
       {
         question: parsed.data.question,
         scope: parsed.data.scope,

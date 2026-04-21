@@ -24,6 +24,8 @@ export interface ImportHandlerDeps {
   config: Config
   db: MonetaDb
   identity: AgentIdentity
+  /** Project identifier from the X-Project-Id request header */
+  projectId: string
 }
 
 // ---------------------------------------------------------------------------
@@ -46,7 +48,7 @@ export async function handleImport(
   deps: ImportHandlerDeps,
   params: ImportHandlerParams,
 ): Promise<ImportResponse> {
-  const { config, db, identity } = deps
+  const { config, db, identity, projectId } = deps
   const { memories } = params
 
   if (memories.length === 0) {
@@ -92,7 +94,7 @@ export async function handleImport(
 
     try {
       const duplicates = await callDedupCheck(db, {
-        projectId: config.projectId,
+        projectId,
         embedding,
         threshold: config.dedupThreshold,
       })
@@ -111,7 +113,7 @@ export async function handleImport(
         : (item.tags ?? undefined)
 
       await insertMemory(db, {
-        project_id: config.projectId,
+        project_id: projectId,
         content: item.content,
         embedding,
         created_by: identity.createdBy,

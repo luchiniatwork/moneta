@@ -26,6 +26,16 @@ program
   .name("moneta")
   .description("CLI for browsing and managing the Moneta shared memory store")
   .version("0.0.1")
+  .option("--project-id <id>", "Project identifier (overrides MONETA_PROJECT_ID)")
+
+// Apply global --project-id flag to the environment before any command runs.
+// This ensures loadConfig() inside createContext() picks up the override.
+program.hook("preAction", (thisCommand) => {
+  const opts = thisCommand.opts<{ projectId?: string }>()
+  if (opts.projectId) {
+    process.env.MONETA_PROJECT_ID = opts.projectId
+  }
+})
 
 // ---------------------------------------------------------------------------
 // moneta remember <content>

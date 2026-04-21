@@ -101,6 +101,9 @@ export function loadConfig(overrides?: Partial<Config>): Config {
 /**
  * Validation options controlling which fields are required.
  *
+ * - `requireProjectId` — requires MONETA_PROJECT_ID (clients need it; the API
+ *   server does not since clients send it per-request via the X-Project-Id header).
+ *   Defaults to `true` for backwards compatibility.
  * - `requireAgentId` — requires MONETA_AGENT_ID (MCP server)
  * - `requireDatabase` — requires databaseUrl + openaiApiKey (api-server).
  *   When `false`, databaseUrl and openaiApiKey are not validated, allowing
@@ -108,6 +111,7 @@ export function loadConfig(overrides?: Partial<Config>): Config {
  * - `requireApiUrl` — requires apiUrl (clients that talk to the REST API)
  */
 export interface ValidateConfigOpts {
+  requireProjectId?: boolean
   requireAgentId?: boolean
   requireDatabase?: boolean
   requireApiUrl?: boolean
@@ -121,9 +125,10 @@ export interface ValidateConfigOpts {
  */
 export function validateConfig(config: Config, opts: ValidateConfigOpts = {}): string[] {
   const errors: string[] = []
+  const requireProjectId = opts.requireProjectId ?? true
   const requireDatabase = opts.requireDatabase ?? true
 
-  if (!config.projectId) {
+  if (requireProjectId && !config.projectId) {
     errors.push(
       "Missing required config: projectId (set MONETA_PROJECT_ID or project_id in config file)",
     )

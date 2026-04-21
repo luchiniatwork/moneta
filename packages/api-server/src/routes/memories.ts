@@ -25,6 +25,9 @@ import {
 /**
  * Create all memory CRUD, lifecycle, and bulk operation routes.
  *
+ * All routes require `X-Project-Id` header for project scoping (provided
+ * by project-id middleware applied upstream).
+ *
  * @param config - Server configuration
  * @param db - Database instance
  * @returns Hono app with memory routes
@@ -36,6 +39,8 @@ export function createMemoriesRoute(config: Config, db: MonetaDb): Hono {
   // GET /memories — list memories with filters
   // -------------------------------------------------------------------------
   app.get("/memories", async (c) => {
+    // biome-ignore lint/suspicious/noExplicitAny: Hono context variable typing
+    const projectId = (c as any).get("projectId") as string
     const limit = parseInt(c.req.query("limit") ?? "20", 10)
     const offset = parseInt(c.req.query("offset") ?? "0", 10)
     const agent = c.req.query("agent")
@@ -58,7 +63,7 @@ export function createMemoriesRoute(config: Config, db: MonetaDb): Hono {
     const stale = staleParam === "true"
 
     const rows = await listMemories(db, {
-      projectId: config.projectId,
+      projectId,
       limit,
       offset,
       agent,
@@ -82,6 +87,8 @@ export function createMemoriesRoute(config: Config, db: MonetaDb): Hono {
   // GET /memories/export — export all memories (without embedding)
   // -------------------------------------------------------------------------
   app.get("/memories/export", async (c) => {
+    // biome-ignore lint/suspicious/noExplicitAny: Hono context variable typing
+    const projectId = (c as any).get("projectId") as string
     const archivedParam = c.req.query("archived")
 
     let archived: boolean | undefined
@@ -95,12 +102,12 @@ export function createMemoriesRoute(config: Config, db: MonetaDb): Hono {
     if (archivedParam === "all" || archivedParam === undefined) {
       const [activeRows, archivedRows] = await Promise.all([
         listMemories(db, {
-          projectId: config.projectId,
+          projectId,
           archived: false,
           limit: 10000,
         }),
         listMemories(db, {
-          projectId: config.projectId,
+          projectId,
           archived: true,
           limit: 10000,
         }),
@@ -110,7 +117,7 @@ export function createMemoriesRoute(config: Config, db: MonetaDb): Hono {
     }
 
     const rows = await listMemories(db, {
-      projectId: config.projectId,
+      projectId,
       archived,
       limit: 10000,
     })
@@ -121,8 +128,10 @@ export function createMemoriesRoute(config: Config, db: MonetaDb): Hono {
   // GET /memories/resolve/:prefix — resolve a UUID prefix
   // -------------------------------------------------------------------------
   app.get("/memories/resolve/:prefix", async (c) => {
+    // biome-ignore lint/suspicious/noExplicitAny: Hono context variable typing
+    const projectId = (c as any).get("projectId") as string
     const prefix = c.req.param("prefix")
-    const rows = await findMemoryByIdPrefix(db, config.projectId, prefix)
+    const rows = await findMemoryByIdPrefix(db, projectId, prefix)
     return c.json({ memories: rows.map(mapMemoryRow) })
   })
 
@@ -170,7 +179,12 @@ export function createMemoriesRoute(config: Config, db: MonetaDb): Hono {
 
     // biome-ignore lint/suspicious/noExplicitAny: Hono context variable typing
     const identity = (c as any).get("agentIdentity") as AgentIdentity
-    const result = await handleImport({ config, db, identity }, { memories: parsed.data.memories })
+    // biome-ignore lint/suspicious/noExplicitAny: Hono context variable typing
+    const projectId = (c as any).get("projectId") as string
+    const result = await handleImport(
+      { config, db, identity, projectId },
+      { memories: parsed.data.memories },
+    )
 
     return c.json(result, 201)
   })

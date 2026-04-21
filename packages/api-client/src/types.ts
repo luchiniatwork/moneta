@@ -147,7 +147,6 @@ export interface MemoryStats {
 /** Health check response. */
 export interface HealthStatus {
   status: "ok" | "error"
-  project: string
   version: string
 }
 
@@ -159,6 +158,8 @@ export interface HealthStatus {
 export interface ClientOptions {
   /** Base URL of the REST API (e.g. "http://localhost:3000/api/v1") */
   baseUrl: string
+  /** Project identifier sent via X-Project-Id header on every request */
+  projectId: string
   /** Bearer token for authentication (optional) */
   apiKey?: string
   /** Default agent identity for write operations (e.g. "alice/code-reviewer") */

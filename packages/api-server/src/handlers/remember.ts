@@ -18,6 +18,8 @@ export interface RememberHandlerDeps {
   config: Config
   db: MonetaDb
   identity: AgentIdentity
+  /** Project identifier from the X-Project-Id request header */
+  projectId: string
 }
 
 // ---------------------------------------------------------------------------
@@ -41,7 +43,7 @@ export async function handleRemember(
   deps: RememberHandlerDeps,
   params: RememberHandlerParams,
 ): Promise<RememberResult> {
-  const { config, db, identity } = deps
+  const { config, db, identity, projectId } = deps
   const { content, tags, repo, importance } = params
 
   // Validate content length
@@ -64,7 +66,7 @@ export async function handleRemember(
 
   // Check for near-duplicates
   const duplicates = await callDedupCheck(db, {
-    projectId: config.projectId,
+    projectId,
     embedding,
     threshold: config.dedupThreshold,
   })
@@ -89,7 +91,7 @@ export async function handleRemember(
   const effectiveTags = firstDupe ? [...(tags ?? []), "corroborated"] : (tags ?? undefined)
 
   const row = await insertMemory(db, {
-    project_id: config.projectId,
+    project_id: projectId,
     content,
     embedding,
     created_by: identity.createdBy,

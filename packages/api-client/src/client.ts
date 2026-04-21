@@ -30,7 +30,7 @@ import type {
  * @returns A configured MonetaClient instance
  */
 export function createClient(options: ClientOptions): MonetaClient {
-  const { baseUrl, apiKey, agentId } = options
+  const { baseUrl, projectId, apiKey, agentId } = options
 
   // Strip trailing slash from base URL
   const base = baseUrl.replace(/\/+$/, "")
@@ -40,7 +40,10 @@ export function createClient(options: ClientOptions): MonetaClient {
   // ---------------------------------------------------------------------------
 
   function headers(opts?: { withAgent?: boolean }): Record<string, string> {
-    const h: Record<string, string> = { "Content-Type": "application/json" }
+    const h: Record<string, string> = {
+      "Content-Type": "application/json",
+      "X-Project-Id": projectId,
+    }
     if (apiKey) {
       h.Authorization = `Bearer ${apiKey}`
     }
