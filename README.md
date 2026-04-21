@@ -684,12 +684,12 @@ docker push luchiniatwork/moneta-api
 
 - [x] **Phase 1: Foundation** — Monorepo scaffolding, database schema, shared
   library
-- [ ] **Phase 2: MCP Server MVP** — `remember` and `recall` tools
-- [ ] **Phase 3: MCP Server Complete** — All 6 tools, error handling
-- [ ] **Phase 4: CLI Read Path** — `search`, `list`, `show`, `stats`
-- [ ] **Phase 5: CLI Write Path** — `pin`, `forget`, `correct`, `import`,
+- [x] **Phase 2: MCP Server MVP** — `remember` and `recall` tools
+- [x] **Phase 3: MCP Server Complete** — All 6 tools, error handling
+- [x] **Phase 4: CLI Read Path** — `search`, `list`, `show`, `stats`
+- [x] **Phase 5: CLI Write Path** — `pin`, `forget`, `correct`, `import`,
   `export`
-- [ ] **Phase 6: TUI** — Interactive terminal interface
+- [x] **Phase 6: TUI** — Interactive terminal interface
 - [ ] **Phase 7: Ops & Hardening** — Archival verification, monitoring,
   deployment docs
 - [x] **Phase 8: REST API Server** — Hono REST API, API client, MCP/CLI
