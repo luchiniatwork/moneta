@@ -63,8 +63,11 @@ jobs:
 
       - name: Set package versions
         run: |
-          cd packages/cli && npm version "${{ steps.version.outputs.VERSION }}" --no-git-tag-version --allow-same-version
-          cd ../mcp-server && npm version "${{ steps.version.outputs.VERSION }}" --no-git-tag-version --allow-same-version
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          for pkg in packages/cli packages/mcp-server; do
+            jq --arg v "$VERSION" '.version = $v' "$pkg/package.json" > "$pkg/package.json.tmp"
+            mv "$pkg/package.json.tmp" "$pkg/package.json"
+          done
 
       - name: Configure npm authentication
         run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
