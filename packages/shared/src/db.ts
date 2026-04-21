@@ -20,10 +20,19 @@ import type {
 /**
  * Create a Kysely database instance connected via postgres.js.
  *
+ * Sets `search_path = moneta, public` so all unqualified table and function
+ * references resolve to the `moneta` schema, while the `vector` extension
+ * type from `public` remains accessible. This allows Moneta to coexist
+ * with other applications in the same database.
+ *
  * @param connectionString - PostgreSQL connection URL
  */
 export function createDb(connectionString: string): Kysely<Database> {
-  const pg = postgres(connectionString)
+  const pg = postgres(connectionString, {
+    connection: {
+      search_path: "moneta,public",
+    },
+  })
   return new Kysely<Database>({
     dialect: new PostgresJSDialect({ postgres: pg }),
   })

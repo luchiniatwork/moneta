@@ -28,6 +28,7 @@
     <li><a href="#project-structure">Project Structure</a></li>
     <li><a href="#development">Development</a></li>
     <li><a href="#docker">Docker</a></li>
+    <li><a href="#deploying-to-supabase">Deploying to Supabase</a></li>
     <li><a href="#publishing">Publishing</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
   </ol>
@@ -518,6 +519,104 @@ docker compose down
 The compose file starts a `pgvector/pgvector:pg16` database and the API server
 on port 3000. Migrations are applied automatically on first start. Set
 `MONETA_API_KEY` to require authentication on all API requests.
+
+## Deploying to Supabase
+
+Moneta uses PostgreSQL with pgvector -- it has no runtime dependency on Supabase
+SDKs, Auth, Storage, or Edge Functions. You can use
+[Supabase](https://supabase.com/) as a managed PostgreSQL host for the database
+and deploy the API server separately.
+
+All database objects live in a dedicated `moneta` schema, so Moneta can safely
+share a database with other applications (including an existing Supabase
+project) without naming conflicts.
+
+### 1. Set up the database
+
+Create a Supabase project (or use an existing one), then apply the migrations.
+
+**Option A -- Supabase CLI:**
+
+```sh
+# Link to your remote project
+supabase link --project-ref <your-project-ref>
+
+# Push all migrations
+supabase db push
+```
+
+**Option B -- SQL Editor:**
+
+Paste each migration file into the Supabase Dashboard SQL Editor and run them in
+order:
+
+1. `supabase/migrations/20260410000001_create_project_memory.sql`
+2. `supabase/migrations/20260410000002_create_indexes.sql`
+3. `supabase/migrations/20260410000003_create_functions.sql`
+4. `supabase/migrations/20260410000004_create_cron_jobs.sql`
+
+Grab your **database connection string** from Supabase Dashboard > Settings >
+Database > Connection string (URI format).
+
+> **Note:** Supabase includes both `pgvector` and `pg_cron` out of the box, so
+> all migrations will succeed and the daily archival cron job will run
+> automatically.
+
+### 2. Deploy the API server
+
+The API server is a long-running Bun process -- it cannot run as a Supabase Edge
+Function. Deploy it on any Docker-capable host (Fly.io, Railway, Render, Cloud
+Run, a VPS, etc.):
+
+```sh
+docker pull luchiniatwork/moneta-api
+docker run -d \
+  -p 3000:3000 \
+  -e MONETA_PROJECT_ID=my-project \
+  -e MONETA_DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres \
+  -e OPENAI_API_KEY=sk-... \
+  -e MONETA_API_KEY=your-secret-key \
+  luchiniatwork/moneta-api
+```
+
+Replace the `MONETA_DATABASE_URL` with your Supabase connection string. The API
+server automatically sets `search_path = moneta, public` on the database
+connection, so no additional configuration is needed.
+
+### 3. Connect your agents
+
+Point the MCP server and CLI at your deployed API server:
+
+```json
+{
+  "mcpServers": {
+    "moneta": {
+      "command": "npx",
+      "args": ["@luchiniatwork22/moneta-mcp-server"],
+      "env": {
+        "MONETA_PROJECT_ID": "my-project",
+        "MONETA_API_URL": "https://your-api-host.example.com/api/v1",
+        "MONETA_API_KEY": "your-secret-key",
+        "MONETA_AGENT_ID": "alice/code-reviewer"
+      }
+    }
+  }
+}
+```
+
+### Colocation with an existing Supabase project
+
+Since all Moneta objects live in the `moneta` schema (not `public`), you can
+safely apply the migrations to a database that already hosts another application.
+The `moneta.project_memory` table, `moneta.recall()` function, and all other
+objects will not conflict with your existing tables or with Supabase's internal
+schemas (`auth`, `storage`, etc.).
+
+The only shared resource is the `pgvector` extension, which is database-wide and
+safe to share. If your existing project already has pgvector enabled, the
+`CREATE EXTENSION IF NOT EXISTS vector` statement is a no-op.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Publishing
 

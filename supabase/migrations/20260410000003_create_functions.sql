@@ -1,5 +1,5 @@
 -- recall: Semantic search with optional scoping
-CREATE OR REPLACE FUNCTION recall(
+CREATE OR REPLACE FUNCTION moneta.recall(
     p_project_id        TEXT,
     p_embedding         VECTOR(1536),
     p_limit             INT DEFAULT 10,
@@ -25,7 +25,9 @@ RETURNS TABLE (
     created_at          TIMESTAMPTZ,
     last_accessed_at    TIMESTAMPTZ
 )
-LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql
+SET search_path = moneta, public
+AS $$
 BEGIN
     RETURN QUERY
     SELECT
@@ -56,9 +58,11 @@ END;
 $$;
 
 -- touch_memories: Bump access on recall hits
-CREATE OR REPLACE FUNCTION touch_memories(p_ids UUID[])
+CREATE OR REPLACE FUNCTION moneta.touch_memories(p_ids UUID[])
 RETURNS void
-LANGUAGE sql AS $$
+LANGUAGE sql
+SET search_path = moneta, public
+AS $$
     UPDATE project_memory
     SET last_accessed_at = now(),
         access_count = access_count + 1
@@ -66,7 +70,7 @@ LANGUAGE sql AS $$
 $$;
 
 -- dedup_check: Find near-duplicate memories before insert
-CREATE OR REPLACE FUNCTION dedup_check(
+CREATE OR REPLACE FUNCTION moneta.dedup_check(
     p_project_id    TEXT,
     p_embedding     VECTOR(1536),
     p_threshold     FLOAT DEFAULT 0.95
@@ -77,7 +81,9 @@ RETURNS TABLE (
     similarity      FLOAT,
     created_by      TEXT
 )
-LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql
+SET search_path = moneta, public
+AS $$
 BEGIN
     RETURN QUERY
     SELECT
@@ -95,11 +101,13 @@ END;
 $$;
 
 -- archive_stale: Called by pg_cron daily (or manually)
-CREATE OR REPLACE FUNCTION archive_stale(
+CREATE OR REPLACE FUNCTION moneta.archive_stale(
     p_stale_interval INTERVAL DEFAULT INTERVAL '30 days'
 )
 RETURNS INTEGER
-LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql
+SET search_path = moneta, public
+AS $$
 DECLARE
     affected INTEGER;
 BEGIN

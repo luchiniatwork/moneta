@@ -1,8 +1,12 @@
+-- Create the moneta schema to namespace all objects.
+-- This allows Moneta to coexist with other applications in the same database.
+CREATE SCHEMA IF NOT EXISTS moneta;
+
 -- Enable pgvector extension for embedding storage and similarity search
 CREATE EXTENSION IF NOT EXISTS vector;
 
 -- Core table: stores all agent memories
-CREATE TABLE project_memory (
+CREATE TABLE moneta.project_memory (
     id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     project_id        TEXT NOT NULL,
 
