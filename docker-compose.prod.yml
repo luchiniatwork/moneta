@@ -22,7 +22,8 @@
 
 services:
   api:
-    image: ${MONETA_IMAGE:-ghcr.io/your-org/moneta-api:latest}
+    image: luchiniatwork/moneta-api:latest
+    pull_policy: always
     restart: unless-stopped
     ports:
       - "${MONETA_API_PORT:-3000}:3000"
@@ -57,8 +58,8 @@ services:
     image: pgvector/pgvector:pg16
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required when using the db profile}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required when using the db profile}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-moneta}
     volumes:
       - pgdata:/var/lib/postgresql/data

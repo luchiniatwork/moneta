@@ -1,7 +1,7 @@
 // Config
 
 export type { ValidateConfigOpts } from "./config.ts"
-export { loadConfig, validateConfig } from "./config.ts"
+export { loadConfig, parseDotEnv, validateConfig } from "./config.ts"
 // Database
 export {
   callArchiveStale,

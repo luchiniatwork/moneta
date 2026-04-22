@@ -242,8 +242,20 @@ npx @luchiniatwork22/moneta-mcp-server
 
 ### Configuration
 
-Moneta reads configuration from environment variables, falling back to
-`~/.moneta/config.json`, falling back to built-in defaults.
+Moneta resolves configuration by merging multiple sources (highest priority
+first):
+
+| Priority | Source | Description |
+| -------- | ------ | ----------- |
+| 1 | CLI flags / overrides | `--project-id`, `--agent-id` |
+| 2 | Environment variables | Real shell env vars, then `.env` file in CWD |
+| 3 | Project config | `.moneta/config.json` found by walking up from CWD |
+| 4 | Global config | `~/.moneta/config.json` |
+| 5 | Built-in defaults | Sensible defaults for optional fields |
+
+This means you can set shared defaults globally, override per-project with a
+`.moneta/config.json` or `.env` file, and override per-invocation with
+environment variables or CLI flags.
 
 #### Environment variables
 
@@ -278,20 +290,53 @@ request.
 \*`MONETA_AGENT_ID` is required for the MCP server, not the CLI.
 The CLI also accepts `--project-id <id>` to override `MONETA_PROJECT_ID`.
 
+#### `.env` file
+
+Place a `.env` file in your project directory. Moneta reads it automatically
+when the CLI or MCP server is run from that directory. Standard dotenv syntax
+is supported (`KEY=VALUE`, `#` comments, quoted values, `export` prefix).
+Real environment variables always take precedence over `.env` values.
+
+```sh
+# .env — per-project client config
+MONETA_PROJECT_ID=acme-platform
+MONETA_API_URL=http://localhost:3000/api/v1
+MONETA_API_KEY=secret-key
+MONETA_AGENT_ID=alice/reviewer
+```
+
 #### Config file
+
+Moneta looks for `.moneta/config.json` in the current directory and walks up
+parent directories until it finds one (project config). It also reads
+`~/.moneta/config.json` (global config). Project config values take precedence
+over global config.
 
 ```json
 {
   "project_id": "acme-platform",
-  "database_url": "postgresql://user:pass@host:5432/dbname",
-  "embedding_model": "text-embedding-3-small",
-  "archive_after_days": 30,
-  "dedup_threshold": 0.95,
-  "search_threshold": 0.30,
-  "search_limit": 10,
-  "max_content_length": 2000
+  "api_url": "http://localhost:3000/api/v1",
+  "api_key": "secret-key",
+  "agent_id": "alice/reviewer"
 }
 ```
+
+All available config file keys (snake_case):
+
+| Key                    | Description                                              |
+| ---------------------- | -------------------------------------------------------- |
+| `project_id`           | Project identifier                                       |
+| `api_url`              | REST API base URL                                        |
+| `api_key`              | API key for authentication                               |
+| `agent_id`             | Agent identity                                           |
+| `database_url`         | PostgreSQL connection string (server only)                |
+| `openai_api_key`       | OpenAI API key (server only)                             |
+| `embedding_model`      | Embedding model (default: `text-embedding-3-small`)      |
+| `archive_after_days`   | Days before archival (default: `30`)                     |
+| `dedup_threshold`      | Similarity threshold for dedup (default: `0.95`)         |
+| `search_threshold`     | Min similarity for search results (default: `0.30`)      |
+| `search_limit`         | Default search result limit (default: `10`)              |
+| `max_content_length`   | Max characters per memory (default: `2000`)              |
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
