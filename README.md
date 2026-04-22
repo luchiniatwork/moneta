@@ -27,7 +27,12 @@
     <li><a href="#agent-skills">Agent Skills</a></li>
     <li><a href="#project-structure">Project Structure</a></li>
     <li><a href="#development">Development</a></li>
-    <li><a href="#docker">Docker</a></li>
+    <li>
+      <a href="#docker">Docker</a>
+      <ul>
+        <li><a href="#production-compose">Production Compose</a></li>
+      </ul>
+    </li>
     <li><a href="#deploying-to-supabase">Deploying to Supabase</a></li>
     <li><a href="#publishing">Publishing</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
@@ -416,6 +421,7 @@ moneta/
 │   └── migrations/          # PostgreSQL schema, indexes, functions, cron jobs
 ├── Dockerfile               # Multi-stage build for the API server
 ├── docker-compose.yml       # Local dev: API server + PostgreSQL
+├── docker-compose.prod.yml  # Production: hardened API server + optional DB
 ├── package.json             # Bun workspace root
 ├── tsconfig.json            # Shared TypeScript config (strict mode)
 ├── biome.json               # Linting and formatting
@@ -525,6 +531,53 @@ docker compose down
 The compose file starts a `pgvector/pgvector:pg16` database and the API server
 on port 3000. Migrations are applied automatically on first start. Set
 `MONETA_API_KEY` to require authentication on all API requests.
+
+### Production Compose
+
+For production deployments, use `docker-compose.prod.yml`. It pulls a pre-built
+image from a registry, enforces required environment variables, and applies
+security hardening (read-only filesystem, resource limits, no-new-privileges).
+
+```sh
+# Create a .env file with required variables
+cat > .env <<EOF
+MONETA_IMAGE=luchiniatwork/moneta-api:latest
+MONETA_DATABASE_URL=postgresql://user:pass@db-host:5432/moneta
+OPENAI_API_KEY=sk-...
+MONETA_API_KEY=your-secret-key
+EOF
+
+# Start the API server (database is external)
+docker compose -f docker-compose.prod.yml up -d
+```
+
+If you don't have an external database, start one alongside the API using the
+`db` profile:
+
+```sh
+# Add database credentials to .env
+cat >> .env <<EOF
+POSTGRES_USER=moneta
+POSTGRES_PASSWORD=a-strong-password
+EOF
+
+# Start API + self-hosted PostgreSQL
+docker compose -f docker-compose.prod.yml --profile db up -d
+```
+
+Key differences from the development compose file:
+
+| Concern          | `docker-compose.yml` (dev)       | `docker-compose.prod.yml`              |
+| ---------------- | -------------------------------- | -------------------------------------- |
+| API image        | `build: .` (local build)         | Pre-built from registry                |
+| Database         | Always started                   | Optional (`--profile db`)              |
+| DB credentials   | Hardcoded defaults               | Required via environment               |
+| DB port          | Exposed to host (`:5432`)        | Internal only                          |
+| Secrets          | Optional / defaults              | Enforced (compose refuses to start)    |
+| Resource limits  | None                             | Memory + CPU caps                      |
+| Filesystem       | Read-write                       | Read-only + tmpfs                      |
+| Restart policy   | None                             | `unless-stopped`                       |
+| Logging          | Docker default (unbounded)       | `json-file` with size/rotation caps    |
 
 ## Deploying to Supabase
 

@@ -1,0 +1,91 @@
+# ---------------------------------------------------------------------------
+# Moneta API Server — Production Docker Compose
+# ---------------------------------------------------------------------------
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# With self-hosted Postgres:
+#   docker compose -f docker-compose.prod.yml --profile db up -d
+#
+# Required environment variables (set in .env or via your orchestrator):
+#   MONETA_IMAGE        — full image reference (default: ghcr.io/your-org/moneta-api:latest)
+#   MONETA_DATABASE_URL — PostgreSQL connection string
+#   OPENAI_API_KEY      — OpenAI API key for embeddings
+#   MONETA_API_KEY      — API key for authenticating requests
+#
+# When using the "db" profile, also set:
+#   POSTGRES_USER       — database user
+#   POSTGRES_PASSWORD   — database password
+#   POSTGRES_DB         — database name
+# ---------------------------------------------------------------------------
+
+services:
+  api:
+    image: ${MONETA_IMAGE:-ghcr.io/your-org/moneta-api:latest}
+    restart: unless-stopped
+    ports:
+      - "${MONETA_API_PORT:-3000}:3000"
+    environment:
+      MONETA_DATABASE_URL: ${MONETA_DATABASE_URL:?MONETA_DATABASE_URL is required}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?OPENAI_API_KEY is required}
+      MONETA_API_KEY: ${MONETA_API_KEY:?MONETA_API_KEY is required}
+      MONETA_API_PORT: "3000"
+    networks:
+      - moneta-net
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ---------------------------------------------------------------------------
+  # Optional self-hosted PostgreSQL — activate with: --profile db
+  # ---------------------------------------------------------------------------
+  db:
+    profiles: ["db"]
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required when using the db profile}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required when using the db profile}
+      POSTGRES_DB: ${POSTGRES_DB:-moneta}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./supabase/migrations:/docker-entrypoint-initdb.d:ro
+    networks:
+      - moneta-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: "1.0"
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  moneta-net:
+
+volumes:
+  pgdata:
