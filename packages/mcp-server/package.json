@@ -1,6 +1,6 @@
 {
   "name": "@luchiniatwork22/moneta-mcp-server",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "MCP server for the Moneta shared memory store",
   "type": "module",
   "license": "MIT",

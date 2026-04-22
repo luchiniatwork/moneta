@@ -25,7 +25,7 @@ const program = new Command()
 program
   .name("moneta")
   .description("CLI for browsing and managing the Moneta shared memory store")
-  .version("0.0.4")
+  .version("0.0.5")
   .option("--project-id <id>", "Project identifier (overrides MONETA_PROJECT_ID)")
   .option("--agent-id <id>", "Agent identity (overrides MONETA_AGENT_ID)")
 
