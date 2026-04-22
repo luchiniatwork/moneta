@@ -11,7 +11,6 @@ export interface RememberOptions {
   tags?: string
   repo?: string
   importance?: string
-  agent?: string
   json?: boolean
 }
 

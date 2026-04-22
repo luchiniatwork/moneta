@@ -3,15 +3,6 @@ import type { Importance, ImportEntry } from "@moneta/api-client"
 import type { CliContext } from "../context.ts"
 
 // ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-/** Options parsed from CLI flags for the import command. */
-export interface ImportOptions {
-  agent?: string
-}
-
-// ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
@@ -29,14 +20,9 @@ const VALID_IMPORTANCE_VALUES = new Set<string>(["normal", "high", "critical"])
  * embedding, deduplication, and insertion.
  *
  * @param file - Path to the JSONL file
- * @param options - CLI flag values
  * @param ctx - CLI context with config and API client
  */
-export async function handleImport(
-  file: string,
-  _options: ImportOptions,
-  ctx: CliContext,
-): Promise<void> {
+export async function handleImport(file: string, ctx: CliContext): Promise<void> {
   // Read and parse file
   const entries = parseJsonlFile(file, ctx.config.maxContentLength)
 

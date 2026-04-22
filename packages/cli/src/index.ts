@@ -27,13 +27,17 @@ program
   .description("CLI for browsing and managing the Moneta shared memory store")
   .version("0.0.3")
   .option("--project-id <id>", "Project identifier (overrides MONETA_PROJECT_ID)")
+  .option("--agent-id <id>", "Agent identity (overrides MONETA_AGENT_ID)")
 
-// Apply global --project-id flag to the environment before any command runs.
-// This ensures loadConfig() inside createContext() picks up the override.
+// Apply global flags to the environment before any command runs.
+// This ensures loadConfig() inside createContext() picks up the overrides.
 program.hook("preAction", (thisCommand) => {
-  const opts = thisCommand.opts<{ projectId?: string }>()
+  const opts = thisCommand.opts<{ projectId?: string; agentId?: string }>()
   if (opts.projectId) {
     process.env.MONETA_PROJECT_ID = opts.projectId
+  }
+  if (opts.agentId) {
+    process.env.MONETA_AGENT_ID = opts.agentId
   }
 })
 
@@ -48,7 +52,6 @@ program
   .option("--tags <tags>", "Free-form tags (comma-separated)")
   .option("--repo <name>", "Repository this memory relates to")
   .option("--importance <level>", 'Importance: "normal", "high", or "critical"')
-  .option("--agent <identity>", "Agent identity (overrides MONETA_AGENT_ID)")
   .option("--json", "Output as JSON")
   .action(async (content: string, options: Record<string, unknown>) => {
     const ctx = await createContext()
@@ -273,11 +276,10 @@ program
   .command("import")
   .description("Import memories from a JSONL file")
   .argument("<file>", "Path to JSONL file")
-  .option("--agent <identity>", 'Agent identity for imported entries (default: "cli/import")')
-  .action(async (file: string, options: Record<string, unknown>) => {
+  .action(async (file: string) => {
     const ctx = await createContext()
     try {
-      await handleImport(file, options, ctx)
+      await handleImport(file, ctx)
     } finally {
       await destroyContext(ctx)
     }

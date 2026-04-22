@@ -163,10 +163,10 @@ multi-repo project. Omit it when the memory applies to the whole project.
 
 The `remember` command requires an agent identity. This is normally set via the
 `MONETA_AGENT_ID` environment variable (format: `"engineer/agent-type"`, e.g.,
-`"alice/code-reviewer"`). You can override it per-command with `--agent`:
+`"alice/code-reviewer"`). You can override it globally with `--agent-id`:
 
 ```bash
-moneta remember "..." --agent "alice/code-reviewer"
+moneta --agent-id "alice/code-reviewer" remember "..."
 ```
 
 ## Command Reference
@@ -174,7 +174,7 @@ moneta remember "..." --agent "alice/code-reviewer"
 ### `moneta remember <content>` -- Store a new memory
 
 ```bash
-moneta remember "<content>" [--tags <tags>] [--repo <name>] [--importance <level>] [--agent <identity>] [--json]
+moneta remember "<content>" [--tags <tags>] [--repo <name>] [--importance <level>] [--json]
 ```
 
 | Flag            | Description                                            |
@@ -182,7 +182,6 @@ moneta remember "<content>" [--tags <tags>] [--repo <name>] [--importance <level
 | `--tags`        | Comma-separated tags for organization.                 |
 | `--repo`        | Repository this memory relates to.                     |
 | `--importance`  | `normal`, `high`, or `critical`.                       |
-| `--agent`       | Agent identity (overrides `MONETA_AGENT_ID`).          |
 | `--json`        | Output as JSON.                                        |
 
 Near-duplicate memories from the same agent are automatically updated in place.
