@@ -1,6 +1,6 @@
 {
   "name": "@luchiniatwork22/moneta-cli",
-  "version": "0.0.1",
+  "version": "0.0.3",
   "description": "CLI for browsing and managing the Moneta shared memory store",
   "type": "module",
   "license": "MIT",

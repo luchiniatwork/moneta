@@ -19,7 +19,7 @@ export function createHealthRoute(): Hono {
   app.get("/health", (c) => {
     const response: HealthResponse = {
       status: "ok",
-      version: "0.0.1",
+      version: "0.0.3",
     }
     return c.json(response)
   })
