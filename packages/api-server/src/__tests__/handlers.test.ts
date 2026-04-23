@@ -258,6 +258,45 @@ describe("handleRecall", () => {
     expect(mockCallTouchMemories).not.toHaveBeenCalled()
   })
 
+  it("passes queryText to callRecall for hybrid search", async () => {
+    mockCallRecall.mockResolvedValueOnce([])
+
+    await handleRecall(
+      { config: TEST_CONFIG, db: TEST_DB, projectId: "test-project" },
+      { question: "Patrick" },
+    )
+
+    const callArgs = mockCallRecall.mock.calls[0] as unknown[]
+    const recallParams = callArgs?.[1] as Record<string, unknown> | undefined
+    expect(recallParams?.queryText).toBe("Patrick")
+  })
+
+  it("uses config threshold when no per-request threshold provided", async () => {
+    mockCallRecall.mockResolvedValueOnce([])
+
+    await handleRecall(
+      { config: TEST_CONFIG, db: TEST_DB, projectId: "test-project" },
+      { question: "test query" },
+    )
+
+    const callArgs = mockCallRecall.mock.calls[0] as unknown[]
+    const recallParams = callArgs?.[1] as Record<string, unknown> | undefined
+    expect(recallParams?.threshold).toBe(0.3)
+  })
+
+  it("uses per-request threshold when provided", async () => {
+    mockCallRecall.mockResolvedValueOnce([])
+
+    await handleRecall(
+      { config: TEST_CONFIG, db: TEST_DB, projectId: "test-project" },
+      { question: "test query", threshold: 0.15 },
+    )
+
+    const callArgs = mockCallRecall.mock.calls[0] as unknown[]
+    const recallParams = callArgs?.[1] as Record<string, unknown> | undefined
+    expect(recallParams?.threshold).toBe(0.15)
+  })
+
   it("touches returned memories", async () => {
     const mockResults: RecallResult[] = [
       {

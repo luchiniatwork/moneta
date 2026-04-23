@@ -15,6 +15,7 @@ export interface RecallParams {
     tags?: string[]
   }
   limit?: number
+  threshold?: number
   include_archived?: boolean
 }
 
@@ -49,6 +50,7 @@ export async function handleRecall(
     question: params.question,
     scope: params.scope,
     limit: params.limit ?? config.searchLimit,
+    threshold: params.threshold,
     includeArchived: params.include_archived,
   })
 }

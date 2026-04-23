@@ -163,6 +163,7 @@ describe("handleRecall", () => {
       "auth?",
       {
         limit: "5",
+        threshold: "0.2",
         agent: "alice/code-reviewer",
         engineer: "alice",
         repo: "auth-service",
@@ -175,6 +176,7 @@ describe("handleRecall", () => {
     const args = (client.recall as ReturnType<typeof mock>).mock.calls[0] as unknown[]
     const params = args[0] as Record<string, unknown>
     expect(params.limit).toBe(5)
+    expect(params.threshold).toBe(0.2)
     expect(params.includeArchived).toBe(true)
     const scope = params.scope as Record<string, unknown>
     expect(scope.agent).toBe("alice/code-reviewer")

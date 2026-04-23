@@ -38,10 +38,11 @@ export async function handleRecall(
   ctx: CliContext,
 ): Promise<void> {
   const limit = options.limit ? Number.parseInt(options.limit, 10) : ctx.config.searchLimit
+  const threshold = options.threshold ? Number.parseFloat(options.threshold) : undefined
   const includeArchived = options.archived ?? false
   const tags = options.tags ? options.tags.split(",").map((t) => t.trim()) : undefined
 
-  // Semantic search via API
+  // Semantic search via API (hybrid: vector similarity + full-text fallback)
   const results = await ctx.client.recall({
     question,
     scope: {
@@ -51,6 +52,7 @@ export async function handleRecall(
       tags,
     },
     limit,
+    threshold,
     includeArchived,
   })
 
@@ -60,18 +62,16 @@ export async function handleRecall(
     return
   }
 
-  const threshold = options.threshold
-    ? Number.parseFloat(options.threshold)
-    : ctx.config.searchThreshold
+  const displayThreshold = threshold ?? ctx.config.searchThreshold
 
   if (results.length === 0) {
-    console.log(pc.dim(`No results for "${question}" (threshold: ${threshold.toFixed(2)})`))
+    console.log(pc.dim(`No results for "${question}" (threshold: ${displayThreshold.toFixed(2)})`))
     return
   }
 
   printRecallResults(results)
   console.log()
-  console.log(pc.dim(`${results.length} results (threshold: ${threshold.toFixed(2)})`))
+  console.log(pc.dim(`${results.length} results (threshold: ${displayThreshold.toFixed(2)})`))
 }
 
 // ---------------------------------------------------------------------------

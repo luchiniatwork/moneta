@@ -44,6 +44,7 @@ export function createRecallRoute(config: Config, db: MonetaDb): Hono {
         question: parsed.data.question,
         scope: parsed.data.scope,
         limit: parsed.data.limit,
+        threshold: parsed.data.threshold,
         includeArchived: parsed.data.includeArchived,
       },
     )

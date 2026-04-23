@@ -53,6 +53,7 @@ export const RecallRequestSchema = z.object({
     })
     .optional(),
   limit: z.number().int().positive().optional(),
+  threshold: z.number().positive().max(1).optional(),
   includeArchived: z.boolean().optional(),
 })
 

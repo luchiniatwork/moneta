@@ -275,7 +275,17 @@ export async function findMemoryByIdPrefix(
 // RPC wrappers (calling SQL functions)
 // ---------------------------------------------------------------------------
 
-/** Semantic search via the `recall()` SQL function. */
+/**
+ * Semantic search via the `recall()` SQL function.
+ *
+ * Performs hybrid search: results are returned when the cosine similarity
+ * exceeds `threshold` **or** when the memory content matches `queryText`
+ * via PostgreSQL full-text search.
+ *
+ * @param db - Kysely database instance
+ * @param params - Search parameters including embedding, filters, and optional query text
+ * @returns Matching memories ranked by cosine similarity
+ */
 export async function callRecall(
   db: Kysely<Database>,
   params: {
@@ -288,6 +298,8 @@ export async function callRecall(
     engineer?: string
     repo?: string
     tags?: string[]
+    /** Raw query text for full-text search fallback (hybrid search). */
+    queryText?: string
   },
 ): Promise<RecallResult[]> {
   const vec = toVectorLiteral(params.embedding)
@@ -298,6 +310,7 @@ export async function callRecall(
   const engineer = params.engineer ?? null
   const repo = params.repo ?? null
   const tags = params.tags ?? null
+  const queryText = params.queryText ?? null
 
   const tagsLiteral = tags
     ? sql`${sql.raw(`ARRAY[${tags.map((t) => `'${t.replace(/'/g, "''")}'`).join(",")}]::text[]`)}`
@@ -313,7 +326,8 @@ export async function callRecall(
       ${agent},
       ${engineer},
       ${repo},
-      ${tagsLiteral}
+      ${tagsLiteral},
+      ${queryText}
     )
   `.execute(db)
 

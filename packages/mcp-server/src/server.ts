@@ -194,6 +194,15 @@ function registerRecallTool(server: McpServer, deps: ServerDeps): void {
       .max(100)
       .optional()
       .describe(`Max results (default ${config.searchLimit}).`),
+    threshold: z
+      .number()
+      .min(0)
+      .max(1)
+      .optional()
+      .describe(
+        `Minimum similarity threshold (default ${config.searchThreshold}). ` +
+          "Lower values return more results.",
+      ),
     include_archived: z
       .boolean()
       .optional()

@@ -10,6 +10,7 @@ export interface RecallHandlerParams {
   question: string
   scope?: SearchScope
   limit?: number
+  threshold?: number
   includeArchived?: boolean
 }
 
@@ -56,17 +57,19 @@ export async function handleRecall(
     )
   }
 
-  // Semantic search via the recall() SQL function
+  // Hybrid search: vector similarity + full-text fallback
+  const threshold = params.threshold ?? config.searchThreshold
   const results = await callRecall(db, {
     projectId,
     embedding,
     limit,
-    threshold: config.searchThreshold,
+    threshold,
     includeArchived: includeArchived ?? false,
     agent: scope?.agent,
     engineer: scope?.engineer,
     repo: scope?.repo,
     tags: scope?.tags,
+    queryText: question,
   })
 
   if (results.length === 0) {

@@ -71,6 +71,8 @@ export interface RecallParams {
   question: string
   scope?: SearchScope
   limit?: number
+  /** Override the server's default similarity threshold (0 < threshold <= 1). */
+  threshold?: number
   includeArchived?: boolean
 }
 

@@ -286,6 +286,7 @@ describe("handleRecall", () => {
       question: "Test",
       scope: undefined,
       limit: 25,
+      threshold: undefined,
       includeArchived: undefined,
     })
   })
@@ -298,6 +299,7 @@ describe("handleRecall", () => {
       question: "Test",
       scope: undefined,
       limit: 5,
+      threshold: undefined,
       includeArchived: undefined,
     })
   })
@@ -317,6 +319,7 @@ describe("handleRecall", () => {
       question: "Test",
       scope: { agent: "bob/architect", repo: "auth-service", tags: ["security"] },
       limit: 5,
+      threshold: undefined,
       includeArchived: undefined,
     })
   })
@@ -329,7 +332,21 @@ describe("handleRecall", () => {
       question: "Old question",
       scope: undefined,
       limit: 10,
+      threshold: undefined,
       includeArchived: true,
+    })
+  })
+
+  it("passes threshold to client.recall when provided", async () => {
+    const config = fakeConfig()
+    await handleRecall({ client, config }, { question: "Test", threshold: 0.15 })
+
+    expect(mocks.recall).toHaveBeenCalledWith({
+      question: "Test",
+      scope: undefined,
+      limit: 10,
+      threshold: 0.15,
+      includeArchived: undefined,
     })
   })
 
