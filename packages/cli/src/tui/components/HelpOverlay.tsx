@@ -35,6 +35,7 @@ export function HelpOverlay(): React.JSX.Element {
       <Binding keys="d" action="Delete with confirmation (selected memory)" />
       <Binding keys="t" action="Edit tags (selected memory)" />
       <Binding keys="n" action="Create a new memory" />
+      <Binding keys="r" action="Refresh list from server" />
       <Text> </Text>
 
       <Text bold>List Mode</Text>

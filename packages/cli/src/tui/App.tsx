@@ -287,6 +287,16 @@ export function App(): React.JSX.Element {
         return
       }
 
+      // Manual refresh
+      if (input === "r") {
+        setStatusMessage("Refreshing…")
+        void refreshAfterAction().then(() => {
+          setStatusMessage("Refreshed")
+          setTimeout(() => setStatusMessage(null), 3_000)
+        })
+        return
+      }
+
       // List-mode-only keys
       if (mode === "list") {
         if (input === "f") {

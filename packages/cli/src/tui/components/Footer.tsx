@@ -45,7 +45,7 @@ function getHints(mode: Mode, overlay: Overlay, inputFocused: boolean): string {
     ? "[Enter] Recall  [Esc] Navigate"
     : "[/] Recall  [j/k] Navigate  [Enter] Detail"
 
-  const actions = "[p] Pin  [a] Archive  [d] Delete  [t] Tags  [n] New"
+  const actions = "[p] Pin  [a] Archive  [d] Delete  [t] Tags  [n] New  [r] Refresh"
   const listKeys = mode === "list" ? "  [f] Filters  [s] Sort" : ""
   const modes = "[Tab] Mode  [Ctrl+S] Stats  [?] Help  [q] Quit"
 
