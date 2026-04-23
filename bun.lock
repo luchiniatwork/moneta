@@ -13,11 +13,11 @@
     },
     "packages/api-client": {
       "name": "@moneta/api-client",
-      "version": "0.0.1",
+      "version": "0.0.5",
     },
     "packages/api-server": {
       "name": "@moneta/api-server",
-      "version": "0.0.1",
+      "version": "0.0.5",
       "dependencies": {
         "@moneta/shared": "workspace:*",
         "hono": "^4.7.0",
@@ -26,7 +26,7 @@
     },
     "packages/cli": {
       "name": "@luchiniatwork22/moneta-cli",
-      "version": "0.0.1",
+      "version": "0.0.5",
       "bin": {
         "moneta": "dist/index.js",
       },
@@ -47,22 +47,20 @@
     },
     "packages/mcp-server": {
       "name": "@luchiniatwork22/moneta-mcp-server",
-      "version": "0.0.1",
+      "version": "0.0.5",
       "bin": {
         "moneta-mcp-server": "dist/index.js",
       },
-      "dependencies": {
-        "@modelcontextprotocol/sdk": "^1.11.0",
-        "zod": "^3.25",
-      },
       "devDependencies": {
+        "@modelcontextprotocol/sdk": "^1.11.0",
         "@moneta/api-client": "workspace:*",
         "@moneta/shared": "workspace:*",
+        "zod": "^3.25",
       },
     },
     "packages/shared": {
       "name": "@moneta/shared",
-      "version": "0.0.1",
+      "version": "0.0.5",
       "dependencies": {
         "kysely": "^0.28.3",
         "kysely-postgres-js": "^2.0.0",

@@ -30,12 +30,10 @@
     "mcp",
     "model-context-protocol"
   ],
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.11.0",
-    "zod": "^3.25"
-  },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.11.0",
     "@moneta/api-client": "workspace:*",
-    "@moneta/shared": "workspace:*"
+    "@moneta/shared": "workspace:*",
+    "zod": "^3.25"
   }
 }

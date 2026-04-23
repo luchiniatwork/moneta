@@ -1,5 +1,6 @@
 import { chmod, rm } from "node:fs/promises"
 import { dirname, join } from "node:path"
+import type { BunPlugin } from "bun"
 
 // ---------------------------------------------------------------------------
 // Build configuration
@@ -11,19 +12,25 @@ const OUT_DIR = join(ROOT, "dist")
 const OUT_FILE = "index.js"
 const SHEBANG = "#!/usr/bin/env node\n"
 
-/**
- * npm packages to keep as external imports (installed at runtime via
- * `dependencies` in package.json). Everything else — including the
- * workspace packages `@moneta/shared` and `@moneta/api-client` — is
- * bundled inline.
- */
-const EXTERNAL = [
-  "@modelcontextprotocol/sdk",
-  "@modelcontextprotocol/sdk/server/mcp",
-  "@modelcontextprotocol/sdk/server/stdio",
-  "@modelcontextprotocol/sdk/types",
-  "zod",
-]
+// ---------------------------------------------------------------------------
+// MCP SDK resolution plugin
+//
+// The MCP SDK uses a wildcard `exports` entry (`./*` → `./dist/esm/*`)
+// that omits the `.js` extension. This breaks both Bun's bundler and
+// Node.js ESM resolution. The plugin intercepts SDK subpath imports and
+// resolves them to the concrete `.js` files so they can be bundled.
+// ---------------------------------------------------------------------------
+
+const mcpSdkPlugin: BunPlugin = {
+  name: "resolve-mcp-sdk-wildcard",
+  setup(build) {
+    build.onResolve({ filter: /^@modelcontextprotocol\/sdk\/.+/ }, (args) => {
+      const subpath = args.path.replace("@modelcontextprotocol/sdk/", "")
+      const sdkDir = join(ROOT, "node_modules", "@modelcontextprotocol", "sdk")
+      return { path: join(sdkDir, "dist", "esm", `${subpath}.js`) }
+    })
+  },
+}
 
 // ---------------------------------------------------------------------------
 // Build
@@ -37,7 +44,7 @@ const result = await Bun.build({
   outdir: OUT_DIR,
   target: "node",
   format: "esm",
-  external: EXTERNAL,
+  plugins: [mcpSdkPlugin],
 })
 
 if (!result.success) {
