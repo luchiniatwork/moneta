@@ -18,24 +18,84 @@ import type {
 // ---------------------------------------------------------------------------
 
 /**
+ * Well-known cloud PostgreSQL hostnames that require SSL.
+ *
+ * When the connection string does not explicitly set `sslmode`, connections
+ * to these providers will automatically use `ssl: 'require'`.
+ */
+const SSL_REQUIRED_HOST_SUFFIXES = [
+  ".supabase.co",
+  ".supabase.com",
+  ".neon.tech",
+  ".aivencloud.com",
+  ".elephantsql.com",
+  ".render.com",
+  ".railway.app",
+  ".cockroachlabs.cloud",
+]
+
+/**
+ * Detect whether SSL should be automatically enabled based on the
+ * connection string.
+ *
+ * Returns `'require'` when the hostname matches a known cloud provider and
+ * the URL does not already contain an explicit `sslmode` parameter.
+ * Returns `undefined` otherwise, letting postgres.js use its defaults (or
+ * whatever `sslmode` is already present in the URL).
+ *
+ * @param connectionString - PostgreSQL connection URL
+ * @returns `'require'` or `undefined`
+ */
+function detectSsl(connectionString: string): "require" | undefined {
+  try {
+    const url = new URL(connectionString)
+
+    // If the user already specified sslmode in the query string, respect it.
+    if (url.searchParams.has("sslmode")) {
+      return undefined
+    }
+
+    const hostname = url.hostname.toLowerCase()
+    if (SSL_REQUIRED_HOST_SUFFIXES.some((suffix) => hostname.endsWith(suffix))) {
+      return "require"
+    }
+  } catch {
+    // Malformed URL — let postgres.js deal with it.
+  }
+  return undefined
+}
+
+/**
  * Create a Kysely database instance connected via postgres.js.
  *
- * Sets `search_path = moneta, public` so all unqualified table and function
- * references resolve to the `moneta` schema, while the `vector` extension
- * type from `public` remains accessible. This allows Moneta to coexist
- * with other applications in the same database.
+ * All queries are scoped to the `moneta` schema via Kysely's
+ * `withSchema()` so that table references work correctly even when the
+ * connection goes through a connection pooler that drops session-level
+ * `search_path` settings. The `search_path` connection parameter is kept
+ * as a belt-and-suspenders fallback for direct connections.
+ *
+ * When the connection string points to a known cloud provider (e.g.
+ * Supabase, Neon) and does not already include an `sslmode` parameter,
+ * SSL is automatically enabled.
  *
  * @param connectionString - PostgreSQL connection URL
  */
 export function createDb(connectionString: string): Kysely<Database> {
+  const ssl = detectSsl(connectionString)
+
+  if (ssl) {
+    console.error(`[moneta] Auto-enabling SSL for cloud-hosted database`)
+  }
+
   const pg = postgres(connectionString, {
+    ssl,
     connection: {
       search_path: "moneta,public",
     },
   })
   return new Kysely<Database>({
     dialect: new PostgresJSDialect({ postgres: pg }),
-  })
+  }).withSchema("moneta")
 }
 
 // ---------------------------------------------------------------------------
@@ -244,7 +304,7 @@ export async function callRecall(
     : sql`NULL::text[]`
 
   const rows = await sql<RecallResult>`
-    SELECT * FROM recall(
+    SELECT * FROM moneta.recall(
       ${params.projectId},
       ${sql.raw(`'${vec}'::vector(1536)`)},
       ${limit},
@@ -263,7 +323,7 @@ export async function callRecall(
 /** Bump access timestamps for recalled memories. */
 export async function callTouchMemories(db: Kysely<Database>, ids: string[]): Promise<void> {
   if (ids.length === 0) return
-  await sql`SELECT touch_memories(${sql.raw(`ARRAY[${ids.map((id) => `'${id}'::uuid`).join(",")}]`)})`.execute(
+  await sql`SELECT moneta.touch_memories(${sql.raw(`ARRAY[${ids.map((id) => `'${id}'::uuid`).join(",")}]`)})`.execute(
     db,
   )
 }
@@ -281,7 +341,7 @@ export async function callDedupCheck(
   const threshold = params.threshold ?? 0.95
 
   const rows = await sql<DedupMatch>`
-    SELECT * FROM dedup_check(
+    SELECT * FROM moneta.dedup_check(
       ${params.projectId},
       ${sql.raw(`'${vec}'::vector(1536)`)},
       ${threshold}
@@ -306,7 +366,7 @@ export async function callArchiveStale(
   staleIntervalDays: number = 30,
 ): Promise<number> {
   const result = await sql<{ archive_stale: number }>`
-    SELECT archive_stale(${sql.raw(`INTERVAL '${staleIntervalDays} days'`)})
+    SELECT moneta.archive_stale(${sql.raw(`INTERVAL '${staleIntervalDays} days'`)})
   `.execute(db)
 
   return Number(result.rows[0]?.archive_stale ?? 0)
@@ -333,7 +393,7 @@ export async function getCounts(db: Kysely<Database>, projectId: string): Promis
       COUNT(*) FILTER (WHERE NOT archived) AS active,
       COUNT(*) FILTER (WHERE archived)     AS archived,
       COUNT(*) FILTER (WHERE pinned)       AS pinned
-    FROM project_memory
+    FROM moneta.project_memory
     WHERE project_id = ${projectId}
   `.execute(db)
 
@@ -389,7 +449,7 @@ async function fetchStatsCounts(
       COUNT(*) FILTER (WHERE NOT archived)      AS active,
       COUNT(*) FILTER (WHERE archived)          AS archived,
       COUNT(*) FILTER (WHERE pinned)            AS pinned
-    FROM project_memory
+    FROM moneta.project_memory
     WHERE project_id = ${projectId}
   `.execute(db)
 
@@ -411,7 +471,7 @@ async function fetchByEngineer(
       COALESCE(engineer, 'auto') AS engineer,
       COUNT(*)                   AS count,
       COUNT(*) FILTER (WHERE pinned) AS pinned
-    FROM project_memory
+    FROM moneta.project_memory
     WHERE project_id = ${projectId} AND NOT archived
     GROUP BY COALESCE(engineer, 'auto')
     ORDER BY count DESC
@@ -432,7 +492,7 @@ async function fetchByRepo(
     SELECT
       COALESCE(repo, '(no repo)') AS repo,
       COUNT(*)                    AS count
-    FROM project_memory
+    FROM moneta.project_memory
     WHERE project_id = ${projectId} AND NOT archived
     GROUP BY COALESCE(repo, '(no repo)')
     ORDER BY count DESC
@@ -452,7 +512,7 @@ async function fetchTopTags(
     SELECT
       unnest(tags) AS tag,
       COUNT(*)     AS count
-    FROM project_memory
+    FROM moneta.project_memory
     WHERE project_id = ${projectId} AND NOT archived
     GROUP BY tag
     ORDER BY count DESC
@@ -485,7 +545,7 @@ async function fetchArchivalMetrics(
       COUNT(*) FILTER (
         WHERE created_at > date_trunc('day', now())
       ) AS created_today
-    FROM project_memory
+    FROM moneta.project_memory
     WHERE project_id = ${projectId}
   `.execute(db)
 
@@ -503,7 +563,7 @@ async function fetchMostAccessed(
 ): Promise<Array<{ id: string; content: string; accessCount: number }>> {
   const result = await sql<{ id: string; content: string; access_count: string }>`
     SELECT id, content, access_count
-    FROM project_memory
+    FROM moneta.project_memory
     WHERE project_id = ${projectId} AND NOT archived
     ORDER BY access_count DESC
     LIMIT 3

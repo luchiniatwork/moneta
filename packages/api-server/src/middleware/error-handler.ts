@@ -47,6 +47,7 @@ export function globalErrorHandler(err: Error, c: Context): Response {
     message.includes("connection") ||
     message.includes("ECONNREFUSED")
   ) {
+    console.error("[moneta-api] Database error:", err)
     return c.json({ error: { code: "DATABASE_ERROR", message: "Database operation failed" } }, 503)
   }
 
