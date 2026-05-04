@@ -270,7 +270,7 @@ request.
 | `MONETA_DATABASE_URL`        | yes      | PostgreSQL connection string                           |
 | `OPENAI_API_KEY`             | yes      | OpenAI API key for embeddings                          |
 | `MONETA_API_PORT`            | no       | Port to listen on (default: `3000`)                    |
-| `MONETA_API_KEY`             | no       | If set, all requests require `Authorization: Bearer`   |
+| `MONETA_API_KEY`             | no       | If set, all non-health requests require `Authorization: Bearer` |
 | `MONETA_EMBEDDING_MODEL`     | no       | Embedding model (default: `text-embedding-3-small`)    |
 | `MONETA_ARCHIVE_AFTER_DAYS`  | no       | Days before archival (default: `30`)                   |
 | `MONETA_DEDUP_THRESHOLD`     | no       | Similarity threshold for dedup (default: `0.95`)       |
@@ -575,7 +575,8 @@ docker compose down
 
 The compose file starts a `pgvector/pgvector:pg16` database and the API server
 on port 3000. Migrations are applied automatically on first start. Set
-`MONETA_API_KEY` to require authentication on all API requests.
+`MONETA_API_KEY` to require authentication on all API requests (the
+`/health` endpoint is always unauthenticated).
 
 ### Production Compose
 

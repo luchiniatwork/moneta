@@ -236,7 +236,13 @@ export function createClient(options: ClientOptions): MonetaClient {
     },
 
     async health(): Promise<HealthStatus> {
-      return get<HealthStatus>("/health")
+      // Health endpoint is unauthenticated and project-agnostic — skip auth
+      // and project-id headers so it works even without credentials.
+      const res = await fetch(`${base}/health`, {
+        headers: { "Content-Type": "application/json" },
+      })
+      if (!res.ok) return handleError(res)
+      return (await res.json()) as HealthStatus
     },
   }
 }

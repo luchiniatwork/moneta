@@ -240,8 +240,19 @@ describe("auth", () => {
 
     const [, opts] = mockFetch.mock.calls[0] as [string, RequestInit]
     const h = opts.headers as Record<string, string>
-    expect(h["X-Project-Id"]).toBe("test-project")
     expect(h.Authorization).toBeUndefined()
+  })
+
+  it("health() omits Authorization and X-Project-Id even when apiKey is set", async () => {
+    mockFetch.mockImplementation(() => Promise.resolve(jsonResponse({ status: "ok" })))
+
+    await client.health()
+
+    const [url, opts] = mockFetch.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe(`${BASE_URL}/health`)
+    const h = opts.headers as Record<string, string>
+    expect(h.Authorization).toBeUndefined()
+    expect(h["X-Project-Id"]).toBeUndefined()
   })
 })
 

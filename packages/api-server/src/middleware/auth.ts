@@ -7,9 +7,12 @@ import type { Context, MiddlewareHandler } from "hono"
 /**
  * Create a middleware that validates Bearer token authentication.
  *
- * When an API key is configured (via MONETA_API_KEY), all requests must
- * include a matching `Authorization: Bearer <key>` header. If no API key
- * is configured, the middleware is a no-op pass-through.
+ * When an API key is configured (via MONETA_API_KEY), protected requests
+ * must include a matching `Authorization: Bearer <key>` header. If no API
+ * key is configured, the middleware is a no-op pass-through.
+ *
+ * This middleware is applied only to project-scoped routes. The health
+ * endpoint is mounted outside this middleware and is always unauthenticated.
  *
  * @param apiKey - The expected API key, or undefined to skip auth
  * @returns Hono middleware handler

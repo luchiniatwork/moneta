@@ -36,7 +36,8 @@ export interface AppDeps {
  *
  * The API server is multi-tenant: it does not own a project identity.
  * Clients provide their project ID via the `X-Project-Id` header on every
- * project-scoped request. The health endpoint is project-agnostic.
+ * project-scoped request. The health endpoint is unauthenticated and
+ * project-agnostic — it requires neither `Authorization` nor `X-Project-Id`.
  *
  * @param deps - Dependencies (config, db, apiKey)
  * @returns Configured Hono app instance
@@ -48,17 +49,15 @@ export function createApp(deps: AppDeps): Hono {
   // Global error handler
   app.onError(createErrorHandler())
 
-  // Auth middleware (no-op if apiKey is not set)
-  app.use("/*", createAuthMiddleware(apiKey))
-
   // Mount routes under /api/v1
   const v1 = new Hono()
 
-  // Health route — project-agnostic, no X-Project-Id required
+  // Health route — unauthenticated and project-agnostic
   v1.route("/", createHealthRoute())
 
-  // Project-scoped routes — require X-Project-Id header
+  // Protected routes — require auth (when configured) and X-Project-Id header
   const scoped = new Hono()
+  scoped.use("*", createAuthMiddleware(apiKey))
   scoped.use("*", createProjectIdMiddleware())
   scoped.route("/", createStatsRoute(db))
   scoped.route("/", createRememberRoute(config, db))
