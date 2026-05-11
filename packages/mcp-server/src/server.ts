@@ -40,7 +40,7 @@ export function createMonetaServer(deps: ServerDeps): McpServer {
   const { config, identity } = deps
 
   const server = new McpServer(
-    { name: "moneta", version: "0.0.8" },
+    { name: "moneta", version: "0.0.9" },
     {
       instructions: [
         "Moneta is a shared memory system for AI coding agents.",

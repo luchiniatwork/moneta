@@ -748,10 +748,10 @@ To create a release:
 git add -A && git commit -m "prepare release"
 
 # 2. Tag with a semver version
-git tag v1.0.0
+git tag v0.0.9
 
 # 3. Push the tag — this triggers the release workflow
-git push origin v1.0.0
+git push origin v0.0.9
 ```
 
 ### Required GitHub secrets
