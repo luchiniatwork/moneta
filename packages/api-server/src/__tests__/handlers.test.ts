@@ -17,6 +17,7 @@ const mockEmbedBatch = mock(() =>
   Promise.resolve([new Array(1536).fill(0.1) as number[], new Array(1536).fill(0.2) as number[]]),
 )
 const mockCallDedupCheck = mock((): Promise<DedupMatch[]> => Promise.resolve([]))
+const mockCallArchiveStale = mock(() => Promise.resolve(0))
 const mockInsertMemory = mock(() =>
   Promise.resolve({
     id: "mem-001",
@@ -78,6 +79,9 @@ const mockGetMemoryById = mock(
       access_count: 0,
     } satisfies MemoryRow),
 )
+const mockDeleteMemory = mock(() => Promise.resolve(false))
+const mockListMemories = mock(() => Promise.resolve([]))
+const mockFindMemoryByIdPrefix = mock(() => Promise.resolve([]))
 const mockCallRecall = mock((): Promise<RecallResult[]> => Promise.resolve([]))
 const mockCallTouchMemories = mock(() => Promise.resolve())
 const mockGetStats = mock(() =>
@@ -99,8 +103,12 @@ const mockGetStats = mock(() =>
 mock.module("@moneta/shared", () => ({
   embed: mockEmbed,
   embedBatch: mockEmbedBatch,
+  callArchiveStale: mockCallArchiveStale,
   callDedupCheck: mockCallDedupCheck,
+  deleteMemory: mockDeleteMemory,
+  findMemoryByIdPrefix: mockFindMemoryByIdPrefix,
   insertMemory: mockInsertMemory,
+  listMemories: mockListMemories,
   updateMemory: mockUpdateMemory,
   getMemoryById: mockGetMemoryById,
   callRecall: mockCallRecall,
