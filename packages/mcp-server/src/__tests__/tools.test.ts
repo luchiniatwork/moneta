@@ -324,6 +324,54 @@ describe("handleRecall", () => {
     })
   })
 
+  it("omits blank scope filters so recall searches all memories", async () => {
+    const config = fakeConfig()
+    await handleRecall(
+      { client, config },
+      {
+        question: "Test",
+        scope: { agent: "", engineer: " ", repo: "", tags: ["", " "] },
+      },
+    )
+
+    expect(mocks.recall).toHaveBeenCalledWith({
+      question: "Test",
+      scope: undefined,
+      limit: 10,
+      threshold: undefined,
+      includeArchived: undefined,
+    })
+  })
+
+  it("trims scope filters before calling client.recall", async () => {
+    const config = fakeConfig()
+    await handleRecall(
+      { client, config },
+      {
+        question: "Test",
+        scope: {
+          agent: " bob/architect ",
+          engineer: " bob ",
+          repo: " auth-service ",
+          tags: [" security ", "", " jwt "],
+        },
+      },
+    )
+
+    expect(mocks.recall).toHaveBeenCalledWith({
+      question: "Test",
+      scope: {
+        agent: "bob/architect",
+        engineer: "bob",
+        repo: "auth-service",
+        tags: ["security", "jwt"],
+      },
+      limit: 10,
+      threshold: undefined,
+      includeArchived: undefined,
+    })
+  })
+
   it("passes include_archived as includeArchived to client", async () => {
     const config = fakeConfig()
     await handleRecall({ client, config }, { question: "Old question", include_archived: true })

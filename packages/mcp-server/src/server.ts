@@ -46,7 +46,8 @@ export function createMonetaServer(deps: ServerDeps): McpServer {
         "Moneta is a shared memory system for AI coding agents.",
         `You are operating as agent "${identity.createdBy}" on project "${config.projectId}".`,
         "Use `remember` to store short, factual memories that other agents may find useful.",
-        "Use `recall` to search existing memories by asking a natural language question.",
+        "Use `recall` to search all active memories in this project by default.",
+        "Only pass recall `scope` fields when you want to narrow results.",
         "Use `pin` to mark important memories as never-archive.",
         "Use `unpin` to allow a pinned memory to be archived again.",
         "Use `correct` to update a memory when you discover it is stale or wrong.",
@@ -180,13 +181,22 @@ function registerRecallTool(server: McpServer, deps: ServerDeps): void {
     question: z.string().min(1).describe("Natural language question or topic to search for."),
     scope: z
       .object({
-        agent: z.string().optional().describe("Only this agent's memories."),
-        engineer: z.string().optional().describe("Only this engineer's agents."),
-        repo: z.string().optional().describe("Only this repository."),
-        tags: z.array(z.string()).optional().describe("Must have all of these tags."),
+        agent: z
+          .string()
+          .optional()
+          .describe("Only this exact agent's memories. Omit to search all agents."),
+        engineer: z
+          .string()
+          .optional()
+          .describe("Only this engineer's agents. Omit to search all engineers."),
+        repo: z.string().optional().describe("Only this repository. Omit to search all repos."),
+        tags: z
+          .array(z.string())
+          .optional()
+          .describe("Must have all of these tags. Omit to search all tags."),
       })
       .optional()
-      .describe("Optional filters to narrow search results."),
+      .describe("Optional filters to narrow search results. Omit scope to search all memories."),
     limit: z
       .number()
       .int()
@@ -213,8 +223,8 @@ function registerRecallTool(server: McpServer, deps: ServerDeps): void {
 
   ;(server.tool as unknown as ToolRegisterFn)(
     "recall",
-    "Search memories by asking a natural language question. " +
-      "Returns relevant memories ranked by semantic similarity.",
+    "Search all active project memories by asking a natural language question. " +
+      "Optional scope fields narrow results by agent, engineer, repo, or tags.",
     schema,
     async (rawArgs: Record<string, unknown>): Promise<CallToolResult> => {
       const start = Date.now()

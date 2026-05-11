@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
+import { normalizeOptionalString, parseTags } from "../../filters.ts"
 import { useTuiContext } from "../context.tsx"
 import { fromMemory } from "../convert.ts"
 import type { FilterState, MemoryItem } from "../types.ts"
@@ -44,19 +45,12 @@ export function useList(): UseListReturn {
     setLoading(true)
     setError(null)
     try {
-      const tags = filters.tags
-        ? filters.tags
-            .split(",")
-            .map((t) => t.trim())
-            .filter(Boolean)
-        : undefined
-
       const { memories: rows } = await client.listMemories({
         limit: 100,
-        agent: filters.agent || undefined,
-        engineer: filters.engineer || undefined,
-        repo: filters.repo || undefined,
-        tags: tags && tags.length > 0 ? tags : undefined,
+        agent: normalizeOptionalString(filters.agent),
+        engineer: normalizeOptionalString(filters.engineer),
+        repo: normalizeOptionalString(filters.repo),
+        tags: parseTags(filters.tags),
         pinned: filters.pinned || undefined,
         archived: filters.archived || undefined,
         orderBy: sortBy,

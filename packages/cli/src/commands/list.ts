@@ -1,5 +1,6 @@
 import type { Memory } from "@moneta/api-client"
 import type { CliContext } from "../context.ts"
+import { normalizeOptionalString, parseTags } from "../filters.ts"
 import { age, formatTags, pc, printJson, printTable, shortId, truncate } from "../format.ts"
 
 // ---------------------------------------------------------------------------
@@ -34,15 +35,14 @@ export interface ListOptions {
  */
 export async function handleList(options: ListOptions, ctx: CliContext): Promise<void> {
   const limit = options.recent ? Number.parseInt(options.recent, 10) : 20
-  const tags = options.tags ? options.tags.split(",").map((t) => t.trim()) : undefined
 
   // Fetch filtered memories via API
   const { memories } = await ctx.client.listMemories({
     limit,
-    agent: options.agent,
-    engineer: options.engineer,
-    repo: options.repo,
-    tags,
+    agent: normalizeOptionalString(options.agent),
+    engineer: normalizeOptionalString(options.engineer),
+    repo: normalizeOptionalString(options.repo),
+    tags: parseTags(options.tags),
     pinned: options.pinned,
     archived: options.archived,
     stale: options.stale,

@@ -1,5 +1,6 @@
 import type { RecallResult } from "@moneta/api-client"
 import type { CliContext } from "../context.ts"
+import { buildSearchScope } from "../filters.ts"
 import { pc, printJson, printTable, relativeTime, truncate } from "../format.ts"
 
 // ---------------------------------------------------------------------------
@@ -40,17 +41,11 @@ export async function handleRecall(
   const limit = options.limit ? Number.parseInt(options.limit, 10) : ctx.config.searchLimit
   const threshold = options.threshold ? Number.parseFloat(options.threshold) : undefined
   const includeArchived = options.archived ?? false
-  const tags = options.tags ? options.tags.split(",").map((t) => t.trim()) : undefined
 
   // Semantic search via API (hybrid: vector similarity + full-text fallback)
   const results = await ctx.client.recall({
     question,
-    scope: {
-      agent: options.agent,
-      engineer: options.engineer,
-      repo: options.repo,
-      tags,
-    },
+    scope: buildSearchScope(options),
     limit,
     threshold,
     includeArchived,

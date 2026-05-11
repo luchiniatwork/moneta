@@ -120,6 +120,7 @@ function _fakeContext(overrides?: Partial<Config>): CliContext {
 // ---------------------------------------------------------------------------
 
 const { handleRecall } = await import("../commands/recall.ts")
+const { handleList } = await import("../commands/list.ts")
 const { handleShow } = await import("../commands/show.ts")
 
 // ---------------------------------------------------------------------------
@@ -185,6 +186,40 @@ describe("handleRecall", () => {
     expect(scope.tags).toEqual(["security", "jwt"])
   })
 
+  it("omits blank recall filters so recall searches all memories", async () => {
+    const client = createMockClient()
+    const ctx: CliContext = { config: fakeConfig(), client }
+    await handleRecall("auth?", { agent: "", engineer: " ", repo: "", tags: " , " }, ctx)
+
+    const args = (client.recall as ReturnType<typeof mock>).mock.calls[0] as unknown[]
+    const params = args[0] as Record<string, unknown>
+    expect(params.scope).toBeUndefined()
+  })
+
+  it("trims recall filters before calling client.recall", async () => {
+    const client = createMockClient()
+    const ctx: CliContext = { config: fakeConfig(), client }
+    await handleRecall(
+      "auth?",
+      {
+        agent: " alice/code-reviewer ",
+        engineer: " alice ",
+        repo: " auth-service ",
+        tags: " security, , jwt ",
+      },
+      ctx,
+    )
+
+    const args = (client.recall as ReturnType<typeof mock>).mock.calls[0] as unknown[]
+    const params = args[0] as Record<string, unknown>
+    expect(params.scope).toEqual({
+      agent: "alice/code-reviewer",
+      engineer: "alice",
+      repo: "auth-service",
+      tags: ["security", "jwt"],
+    })
+  })
+
   it("outputs JSON when --json flag is set", async () => {
     const results = [fakeRecallResult()]
     const client = createMockClient({
@@ -197,6 +232,54 @@ describe("handleRecall", () => {
     const parsed = JSON.parse(logOutput[0] as string)
     expect(parsed).toHaveLength(1)
     expect(parsed[0].id).toBe(FAKE_UUID)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// list
+// ---------------------------------------------------------------------------
+
+describe("handleList", () => {
+  it("omits blank list filters", async () => {
+    const client = createMockClient()
+    const ctx: CliContext = { config: fakeConfig(), client }
+    await handleList({ agent: "", engineer: " ", repo: "", tags: " , " }, ctx)
+
+    expect(client.listMemories).toHaveBeenCalledWith({
+      limit: 20,
+      agent: undefined,
+      engineer: undefined,
+      repo: undefined,
+      tags: undefined,
+      pinned: undefined,
+      archived: undefined,
+      stale: undefined,
+    })
+  })
+
+  it("trims list filters before calling client.listMemories", async () => {
+    const client = createMockClient()
+    const ctx: CliContext = { config: fakeConfig(), client }
+    await handleList(
+      {
+        agent: " alice/code-reviewer ",
+        engineer: " alice ",
+        repo: " auth-service ",
+        tags: " security, , jwt ",
+      },
+      ctx,
+    )
+
+    expect(client.listMemories).toHaveBeenCalledWith({
+      limit: 20,
+      agent: "alice/code-reviewer",
+      engineer: "alice",
+      repo: "auth-service",
+      tags: ["security", "jwt"],
+      pinned: undefined,
+      archived: undefined,
+      stale: undefined,
+    })
   })
 })
 
